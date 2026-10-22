@@ -10,6 +10,8 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { spawnSync } from "child_process";
+import { B3_UNIVERSE } from "../src/data/b3-universe";
+import type { CoverageStatus } from "../src/data/coverage-types";
 
 type SourceName = "itr" | "dfp" | "ipe";
 
@@ -23,6 +25,8 @@ const statePath = join(projectRoot, ".data-refresh-state.json");
 const tsxCli = join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs");
 const currentYear = new Date().getFullYear();
 const annualYear = currentYear - 1;
+const annualBatchSize = Math.max(1, Number(process.env.CVM_ANNUAL_BATCH_SIZE ?? 16));
+const annualStatuses = new Set<CoverageStatus>(["full_analysis", "cvm_analysis", "cvm_financials"]);
 
 const sourceUrls: Record<SourceName, string> = {
   itr: `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_${currentYear}.zip`,
@@ -75,6 +79,28 @@ function runScript(
   return result.status === 0;
 }
 
+function runAnnualRefresh(documentsOnly = false): boolean {
+  const tickers = B3_UNIVERSE
+    .filter(asset => asset.hasCvmMapping && annualStatuses.has(asset.coverageStatus))
+    .map(asset => asset.ticker);
+  let ok = true;
+
+  for (let start = 0; start < tickers.length; start += annualBatchSize) {
+    const batch = tickers.slice(start, start + annualBatchSize);
+    const batchNumber = Math.floor(start / annualBatchSize) + 1;
+    const batchCount = Math.ceil(tickers.length / annualBatchSize);
+    console.log(`[dados] Lote anual ${batchNumber}/${batchCount}: ${batch[0]}–${batch[batch.length - 1]}`);
+    const args = documentsOnly ? ["--documents-only"] : [];
+    const batchOk = runScript("precompute-cvm-cache.ts", {
+      CVM_TICKERS: batch.join(","),
+      CVM_CONCURRENCY: "2",
+    }, args);
+    ok = batchOk && ok;
+  }
+
+  return ok;
+}
+
 async function main(): Promise<void> {
   if (process.env.SKIP_DATA_REFRESH === "1") {
     console.log("[dados] Atualização automática ignorada por SKIP_DATA_REFRESH=1.");
@@ -119,10 +145,10 @@ async function main(): Promise<void> {
   let ok = true;
   if (dfpChanged) {
     console.log(`[dados] Nova DFP ${annualYear} detectada. Atualizando dados anuais e documentos...`);
-    ok = runScript("precompute-cvm-cache.ts") && ok;
+    ok = runAnnualRefresh() && ok;
   } else if (ipeChanged) {
     console.log("[dados] Novas publicações corporativas detectadas. Atualizando documentos...");
-    ok = runScript("precompute-cvm-cache.ts", {}, ["--documents-only"]) && ok;
+    ok = runAnnualRefresh(true) && ok;
   }
 
   if (itrChanged || dfpChanged) {
