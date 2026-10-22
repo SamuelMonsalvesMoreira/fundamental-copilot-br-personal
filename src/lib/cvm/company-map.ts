@@ -586,6 +586,15 @@ const CVM_COMPANY_MAP: Record<string, CvmCompany> = {
     sector: "Materiais Básicos",
     hasCvmMapping: true,
   },
+  RANI3: {
+    ticker: "RANI3",
+    tradingName: "IRANI",
+    companyName: "Irani Papel e Embalagem S.A.",
+    cvmCode: "2429",
+    cnpj: "92.791.243/0001-03",
+    sector: "Papel e Celulose",
+    hasCvmMapping: true,
+  },
 
   // ── Mineração ─────────────────────────────────────────────────────────────────
   CMIN3: {
@@ -1051,3 +1060,4 @@ export function getCvmCompanyByTicker(ticker: string): CvmCompany | null {
 }
 
 export { CVM_COMPANY_MAP };
+
