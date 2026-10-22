@@ -48,6 +48,7 @@ type ReportStatus =
   | "ok_industrial_full"        // ≥2 years CVM data
   | "ok_industrial_limited"     // 1 year CVM data (growth indicators absent, but page renders)
   | "ok_industrial_legacy"      // no CVM cache, falls to ReportPageClient (mock data)
+  | "ok_industrial_live"        // no cache yet, server report uses live CVM fallback
   | "ok_bank"
   | "ok_fii"
   | "ok_insurance"
@@ -86,6 +87,9 @@ function auditAsset(asset: B3Asset): AuditEntry {
       }
       if (MOCK_REGISTRY.has(t)) {
         return { ticker: t, route, status: "ok_industrial_legacy", detail: "mock registry" };
+      }
+      if (asset.hasCvmMapping) {
+        return { ticker: t, route, status: "ok_industrial_live", detail: "live CVM fallback" };
       }
       return {
         ticker: t, route,
@@ -136,6 +140,7 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
   ok_industrial_full:       "✓ Industrial — dados completos (≥2 anos)",
   ok_industrial_limited:    "⚠ Industrial — dados limitados (1 ano)",
   ok_industrial_legacy:     "~ Industrial — fallback mock",
+  ok_industrial_live:       "✓ Industrial — CVM ao vivo",
   ok_bank:                  "✓ Banco",
   ok_fii:                   "✓ FII",
   ok_insurance:             "✓ Seguradora",
@@ -179,6 +184,7 @@ function main(): void {
     "ok_industrial_full",
     "ok_industrial_limited",
     "ok_industrial_legacy",
+    "ok_industrial_live",
     "ok_bank",
     "ok_fii",
     "ok_insurance",
@@ -227,3 +233,4 @@ function main(): void {
 }
 
 main();
+
