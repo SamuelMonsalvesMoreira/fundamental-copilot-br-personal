@@ -149,10 +149,45 @@ function NoTickerView({ onTicker }: { onTicker: (t: string) => void }) {
   );
 }
 
+function AssetDiscoveryView({
+  ticker, quote, quoteLoading,
+}: {
+  ticker: string;
+  quote: MarketDataQuote | null;
+  quoteLoading: boolean;
+}) {
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "56px 24px" }}>
+      <div style={{ background: "#fff", border: "1px solid #dbeafe", borderRadius: 14, padding: "28px", boxShadow: "0 8px 24px rgba(15,23,42,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", color: "#2563eb", fontSize: 13, fontWeight: 800, marginBottom: 6 }}>{ticker}</div>
+            <h2 style={{ margin: 0, color: "#0f172a", fontSize: 20 }}>Preparando a análise do ativo</h2>
+            <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 13, lineHeight: 1.6, maxWidth: 500 }}>
+              Primeiro identificamos a empresa listada; depois consultamos a CVM e montamos os indicadores adequados ao tipo de ativo.
+            </p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: "#94a3b8", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.5px" }}>Cotação</div>
+            <div style={{ color: "#0f172a", fontSize: 20, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}>
+              {quoteLoading ? "Buscando..." : quote?.price ? `R$ ${quote.price.toFixed(2).replace(".", ",")}` : "—"}
+            </div>
+          </div>
+        </div>
+        <CvmValidationStrip ticker={ticker} status="loading" />
+        <p role="status" style={{ margin: "2px 0 0", color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>
+          Você pode continuar navegando; o painel será aberto automaticamente quando os dados estiverem prontos.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Empty / coverage state ───────────────────────────────────────────────────
 
 function EmptyStateView({
   ticker, companyName, coverageStatus, quote, quoteLoading, sectorDetail, exportUrl,
+  onGenerateAnalysis, analysisLoading, analysisAttempted,
 }: {
   ticker: string;
   companyName: string;
@@ -161,6 +196,9 @@ function EmptyStateView({
   quoteLoading?: boolean;
   sectorDetail?: string | null;
   exportUrl?: string;
+  onGenerateAnalysis?: () => void;
+  analysisLoading?: boolean;
+  analysisAttempted?: boolean;
 }) {
   const status = coverageStatus ?? "unavailable";
   const badge = COVERAGE_BADGE[status];
@@ -244,6 +282,31 @@ function EmptyStateView({
         {quoteLoading && (status === "quote_only" || status === "sector_specific_model_required") && (
           <div style={{ marginTop: 16, fontSize: 12, color: "#94a3b8" }}>
             Buscando cotação...
+          </div>
+        )}
+        {onGenerateAnalysis && (
+          <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid #e2e8f0" }}>
+            <button
+              type="button"
+              onClick={onGenerateAnalysis}
+              disabled={analysisLoading}
+              style={{
+                minHeight: 44, padding: "10px 18px", borderRadius: 8,
+                border: "1px solid #1d4ed8", background: analysisLoading ? "#dbeafe" : "#2563eb",
+                color: analysisLoading ? "#1d4ed8" : "#fff", fontFamily: "inherit",
+                fontSize: 13, fontWeight: 700, cursor: analysisLoading ? "wait" : "pointer",
+              }}
+            >
+              {analysisLoading ? "Consultando CVM e preparando análise..." : "Buscar dados e gerar análise"}
+            </button>
+            <p style={{ margin: "9px auto 0", maxWidth: 390, fontSize: 11, color: "#64748b", lineHeight: 1.55 }}>
+              Identificamos a empresa, buscamos os demonstrativos públicos e calculamos os indicadores. A cotação continua visível durante o processamento.
+            </p>
+            {analysisAttempted && !analysisLoading && (
+              <p role="status" style={{ margin: "8px auto 0", maxWidth: 390, fontSize: 11, color: "#b45309", lineHeight: 1.55 }}>
+                A busca terminou, mas a CVM ainda não forneceu dados suficientes para uma análise completa deste ativo. Você pode tentar novamente após uma nova publicação.
+              </p>
+            )}
           </div>
         )}
         {exportUrl && (
@@ -335,7 +398,7 @@ function SourceBanner({ variant, cvmLoading }: { variant: BannerVariant; cvmLoad
           Análise CVM
         </span>
         <span style={{ fontSize: 12, color: "#6d28d9" }}>
-          Análise fundamentalista com dados da DFP anual consolidada. Dados em validação — não constitui recomendação de investimento.
+          Análise fundamentalista com DFP anual e ITR trimestral da CVM. Dados em validação — não constitui recomendação de investimento.
         </span>
       </div>
     );
@@ -415,6 +478,8 @@ export default function DashboardPageClient() {
   const [instrumentLoading, setInstrumentLoading] = useState(false);
   const [resolvedAsset, setResolvedAsset]       = useState<B3Asset | null>(null);
   const [assetResolving, setAssetResolving]     = useState(false);
+  const [analysisRevision, setAnalysisRevision] = useState(0);
+  const [analysisAttempted, setAnalysisAttempted] = useState(false);
 
   // ── Static lookups (no network) ───────────────────────────────────────────
   const companyData = useMemo(
@@ -523,6 +588,8 @@ export default function DashboardPageClient() {
     setCvmError(false);
     setBankData(null);
     setInstrumentData(null);
+    setAnalysisAttempted(false);
+    setAnalysisRevision(0);
   }, [selectedTicker]);
 
   // Unknown or quote-only tickers get a live discovery attempt. Yahoo is used
@@ -548,7 +615,7 @@ export default function DashboardPageClient() {
       .finally(() => { if (active) setAssetResolving(false); });
 
     return () => { active = false; controller.abort(); };
-  }, [selectedTicker, staticB3Entry]);
+  }, [selectedTicker, staticB3Entry, analysisRevision]);
 
   // ── Market quote fetch ────────────────────────────────────────────────────
   useEffect(() => {
@@ -700,6 +767,11 @@ export default function DashboardPageClient() {
     router.push(`/dashboard?ticker=${encodeURIComponent(ticker)}`);
   }
 
+  function handleGenerateAnalysis() {
+    setAnalysisAttempted(true);
+    setAnalysisRevision(value => value + 1);
+  }
+
   function handleSourceChange(source: "mock" | "cvm") {
     setFinancialSource(source);
     if (source === "mock" || cvmFinancials !== null || !selectedTicker) return;
@@ -728,9 +800,7 @@ export default function DashboardPageClient() {
       {!selectedTicker ? (
         <NoTickerView onTicker={handleSelectCompany} />
       ) : assetResolving && !b3Entry ? (
-        <div style={{ padding: "72px 24px", textAlign: "center", color: "#64748b", fontSize: 14 }}>
-          Procurando {selectedTicker} na B3, Yahoo Finance e cadastro oficial da CVM...
-        </div>
+        <AssetDiscoveryView ticker={selectedTicker} quote={marketQuote} quoteLoading={quoteLoading} />
 
       /* ── State 2: full dashboard (mock data or successful CVM analysis) ─── */
       ) : effectiveCompanyData ? (
@@ -752,7 +822,7 @@ export default function DashboardPageClient() {
                 style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14, alignItems: "start" }}
               >
                 <div>
-                  <HistoricalChart data={activeFinancials} />
+                  <HistoricalChart data={activeFinancials} ticker={selectedTicker} />
                   {indicatorFinancials.length > 0 && (
                     <FundamentalDiagnosis financials={indicatorFinancials} />
                   )}
@@ -810,7 +880,7 @@ export default function DashboardPageClient() {
                     />
                   )
                 )}
-                <HistoricalChart data={activeFinancials} />
+                <HistoricalChart data={activeFinancials} ticker={selectedTicker} />
                 <QuarterlyFinancialsPanel ticker={selectedTicker} />
                 <CvmFinancialsTable ticker={selectedTicker} enabled={true} />
                 {!isCvmAnalysis && (
@@ -1085,6 +1155,13 @@ export default function DashboardPageClient() {
           quoteLoading={quoteLoading}
           sectorDetail={getSectorSpecificDetail(b3Entry)}
           exportUrl={b3Entry ? `/relatorio/${selectedTicker}` : undefined}
+          onGenerateAnalysis={
+            !b3Entry || b3Entry.coverageStatus === "quote_only"
+              ? handleGenerateAnalysis
+              : undefined
+          }
+          analysisLoading={assetResolving}
+          analysisAttempted={analysisAttempted}
         />
       )}
     </div>
