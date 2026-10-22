@@ -15,6 +15,7 @@
  * Environment overrides:
  *   CVM_ITR_START_YEAR  (default 2018)
  *   CVM_ITR_END_YEAR    (default current year)
+ *   CVM_ITR_MERGE       (set to "1" to preserve years outside that range)
  *
  * Memory strategy — year-first batch processing:
  *   For each year, one ITR ZIP is downloaded (~33 MB), all companies' rows are
@@ -62,6 +63,16 @@ function loadAnnualFinancials(ticker: string): NormalizedFinancials[] {
     const raw = readFileSync(join(CACHE_ROOT, "financials", `${ticker}.json`), "utf-8");
     const parsed = JSON.parse(raw) as { financials?: NormalizedFinancials[] };
     return Array.isArray(parsed.financials) ? parsed.financials : [];
+  } catch {
+    return [];
+  }
+}
+
+function loadExistingQuarterly(ticker: string): QuarterlyFinancialRecord[] {
+  try {
+    const raw = readFileSync(join(CACHE_ROOT, "quarterly", `${ticker}.json`), "utf-8");
+    const parsed = JSON.parse(raw) as { quarterly?: QuarterlyFinancialRecord[] };
+    return Array.isArray(parsed.quarterly) ? parsed.quarterly : [];
   } catch {
     return [];
   }
@@ -136,6 +147,7 @@ async function main(): Promise<void> {
 
   const startYear = parseInt(process.env.CVM_ITR_START_YEAR ?? "2018", 10);
   const endYear   = parseInt(process.env.CVM_ITR_END_YEAR   ?? String(new Date().getFullYear()), 10);
+  const mergeExisting = process.env.CVM_ITR_MERGE === "1";
   const years: number[] = Array.from(
     { length: Math.max(0, endYear - startYear + 1) },
     (_, i) => startYear + i,
@@ -200,13 +212,14 @@ async function main(): Promise<void> {
         .sort((a, b) => a.periodEndDate.localeCompare(b.periodEndDate));
 
       if (snapshots.length === 0) {
+        const existing = mergeExisting ? loadExistingQuarterly(ticker) : [];
         const outPath = join(CACHE_ROOT, "quarterly", `${ticker}.json`);
         writeFileSync(
           outPath,
-          JSON.stringify({ ticker, companyName, generatedAt: new Date().toISOString(), quarterly: [] }, null, 2),
+          JSON.stringify({ ticker, companyName, generatedAt: new Date().toISOString(), quarterly: existing }, null, 2),
           "utf-8",
         );
-        console.log(`  [${ticker}] EMPTY`);
+        console.log(`  [${ticker}] ${existing.length > 0 ? `KEPT (${existing.length} quarters)` : "EMPTY"}`);
         empty++;
         continue;
       }
@@ -226,7 +239,7 @@ async function main(): Promise<void> {
         group.push(s);
       }
 
-      const quarterly: QuarterlyFinancialRecord[] = [];
+      let quarterly: QuarterlyFinancialRecord[] = [];
       for (const [fy, fySnapshots] of byFiscalYear) {
         const annualRecord = annualFinancials.find(a => a.fiscalYear === fy);
         quarterly.push(...buildQuarterlyRecords(ticker, fySnapshots, annualRecord));
@@ -234,6 +247,16 @@ async function main(): Promise<void> {
       quarterly.sort((a, b) =>
         a.fiscalYear !== b.fiscalYear ? a.fiscalYear - b.fiscalYear : a.quarter - b.quarter,
       );
+
+      if (mergeExisting) {
+        const refreshedYears = new Set(years);
+        const preserved = loadExistingQuarterly(ticker).filter(
+          record => !refreshedYears.has(record.fiscalYear),
+        );
+        quarterly = [...preserved, ...quarterly].sort((a, b) =>
+          a.fiscalYear !== b.fiscalYear ? a.fiscalYear - b.fiscalYear : a.quarter - b.quarter,
+        );
+      }
 
       const outPath = join(CACHE_ROOT, "quarterly", `${ticker}.json`);
       writeFileSync(
@@ -270,3 +293,4 @@ main().catch(err => {
   console.error("Fatal error:", err);
   process.exit(1);
 });
+
