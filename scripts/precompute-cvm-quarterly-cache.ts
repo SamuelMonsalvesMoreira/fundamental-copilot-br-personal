@@ -286,7 +286,12 @@ async function main(): Promise<void> {
   console.log(`  Elapsed:         ${elapsed}s`);
   console.log("─────────────────────────────────────────\n");
 
-  if (errors > 0) process.exit(1);
+  if (errors > 0) {
+    console.warn(
+      `  Aviso: ${errors} ticker(s) usarão o fallback ITR ao vivo até a próxima atualização.`,
+    );
+  }
+  if (errors === companies.length && companies.length > 0) process.exit(1);
 }
 
 main().catch(err => {
