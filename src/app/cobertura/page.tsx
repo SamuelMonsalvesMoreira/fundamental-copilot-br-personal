@@ -125,7 +125,7 @@ const STATUS_EXPLANATIONS: { status: CoverageStatus; desc: string }[] = [
   },
   {
     status: "quote_only",
-    desc:   "Cotação de mercado disponível. Demonstrações financeiras CVM ainda não integradas para este ativo.",
+    desc:   "Cotação disponível. Abra o ativo para tentar localizar e processar os demonstrativos CVM sob demanda.",
   },
   {
     status: "sector_specific_model_required",
@@ -167,17 +167,18 @@ export default function CoberturaPage() {
   const total  = B3_UNIVERSE.length;
   const sectorSpecificCount  = countSectorSpecificPending();
   const informationalCount   = countInformational();
+  const automaticAnalysisCount = counts.full_analysis + counts.cvm_analysis + counts.cvm_financials;
 
   const summaryCards: SummaryItem[] = [
     {
-      badge: COVERAGE_BADGE.full_analysis,
-      count: counts.full_analysis,
-      desc:  "Dashboard completo com indicadores financeiros e diagnóstico fundamentalista.",
+      badge: { label: "Análise automática", bg: "#dcfce7", color: "#15803d" },
+      count: automaticAnalysisCount,
+      desc:  "Empresas operacionais com dados CVM prontos para indicadores e diagnóstico.",
     },
     {
-      badge: { label: "Dados CVM", bg: "#ede9fe", color: "#7c3aed" },
-      count: counts.cvm_analysis + counts.cvm_financials,
-      desc:  "Dados CVM disponíveis, com profundidade variável de análise fundamentalista.",
+      badge: { label: "Busca sob demanda", bg: "#dbeafe", color: "#1d4ed8" },
+      count: total,
+      desc:  "Ativos pesquisáveis. Quando a análise não está pronta, o app tenta localizar e processar os dados públicos.",
     },
     {
       badge: COVERAGE_BADGE.quote_only,
@@ -236,7 +237,9 @@ export default function CoberturaPage() {
           <p style={{ margin: "0 0 10px", fontSize: 15, color: "#475569", lineHeight: 1.7, maxWidth: 680 }}>
             A plataforma suporta diferentes profundidades de análise conforme o tipo de ativo
             e a disponibilidade de dados CVM. Empresas operacionais com dados CVM consolidados
-            podem receber análise fundamentalista completa.
+            podem receber análise fundamentalista completa. Quando um ativo ainda não estiver
+            processado, abra-o e use a análise sob demanda; ticker, nome e cotação continuam
+            visíveis durante a busca.
           </p>
           <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.7, maxWidth: 680 }}>
             Bancos, seguradoras, FIIs, ETFs e BDRs requerem modelos específicos e não são
@@ -318,3 +321,4 @@ export default function CoberturaPage() {
     </div>
   );
 }
+

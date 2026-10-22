@@ -154,12 +154,9 @@ export default function CoverageTable({ assets }: Props) {
                   isInformational ? INFORMATIONAL_BADGE :
                   COVERAGE_BADGE[asset.coverageStatus];
                 const displayReason = isInformational ? getInstrumentCoverageReason(asset.ticker) : reason;
-                const isDashboardLinked =
-                  asset.coverageStatus === "full_analysis" ||
-                  asset.coverageStatus === "cvm_analysis"  ||
-                  asset.coverageStatus === "cvm_financials" ||
-                  isBankCached ||
-                  isInformational;
+                // Every active ticker can be opened. Assets without a ready
+                // model enter the on-demand discovery flow in the dashboard.
+                const isDashboardLinked = asset.coverageStatus !== "unavailable";
                 return (
                   <tr key={asset.ticker} style={S.row}>
                     <td style={S.tickerCell}>
@@ -196,7 +193,7 @@ export default function CoverageTable({ assets }: Props) {
                         <Link
                           href={`/dashboard?ticker=${encodeURIComponent(asset.ticker)}`}
                           style={S.dashLink}
-                          title={`Abrir dashboard — ${asset.ticker}`}
+                          title={`Abrir ou gerar análise — ${asset.ticker}`}
                         >
                           →
                         </Link>
@@ -384,3 +381,4 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
 };
+
