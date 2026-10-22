@@ -30,6 +30,12 @@ import type { CoverageStatus } from "../src/data/coverage-types";
 const CONCURRENCY = Number(process.env.CVM_CONCURRENCY ?? 2);
 const CACHE_ROOT = join(process.cwd(), "src/data/cvm-cache");
 const DOCUMENTS_ONLY = process.argv.includes("--documents-only");
+const REQUESTED_TICKERS = new Set(
+  (process.env.CVM_TICKERS ?? "")
+    .split(",")
+    .map(ticker => ticker.trim().toUpperCase())
+    .filter(Boolean),
+);
 
 const ELIGIBLE_STATUSES = new Set<CoverageStatus>([
   "full_analysis",
@@ -120,7 +126,8 @@ async function main(): Promise<void> {
   const skipExisting = process.argv.includes("--skip-existing");
   const allTickers = B3_UNIVERSE
     .filter(a => a.hasCvmMapping && ELIGIBLE_STATUSES.has(a.coverageStatus))
-    .map(a => a.ticker);
+    .map(a => a.ticker)
+    .filter(ticker => REQUESTED_TICKERS.size === 0 || REQUESTED_TICKERS.has(ticker));
   const tickers = skipExisting
     ? allTickers.filter(t => {
         const p = join(CACHE_ROOT, "financials", `${t}.json`);
