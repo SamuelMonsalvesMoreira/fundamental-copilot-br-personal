@@ -172,7 +172,15 @@ async function main(): Promise<void> {
 
   console.log("─────────────────────────────────────────\n");
 
-  if (error.length > 0) process.exit(1);
+  if (error.length > 0) {
+    console.warn(
+      `  Aviso: ${error.length} ticker(s) usarão o fallback CVM ao vivo até a próxima atualização.`,
+    );
+  }
+  // A failure isolated to one company must not invalidate fresh data written
+  // for every other company. Only fail the startup refresh if the whole batch
+  // was unable to produce any usable result.
+  if (error.length === tickers.length && tickers.length > 0) process.exit(1);
 }
 
 main().catch(err => {
