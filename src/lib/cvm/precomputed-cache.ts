@@ -37,7 +37,7 @@ export function parseFinancialsCache(raw: string): NormalizedFinancials[] | null
   return obj.financials as NormalizedFinancials[];
 }
 
-export function parseDocumentsCache(raw: string): { documents: CvmDocument[]; companyName: string } | null {
+export function parseDocumentsCache(raw: string): { documents: CvmDocument[]; companyName: string; generatedAt?: string } | null {
   if (!raw) return null;
   let parsed: unknown;
   try {
@@ -49,7 +49,11 @@ export function parseDocumentsCache(raw: string): { documents: CvmDocument[]; co
   const obj = parsed as Record<string, unknown>;
   if (!Array.isArray(obj.documents)) return null;
   if (typeof obj.companyName !== "string") return null;
-  return { documents: obj.documents as CvmDocument[], companyName: obj.companyName };
+  return {
+    documents: obj.documents as CvmDocument[],
+    companyName: obj.companyName,
+    generatedAt: typeof obj.generatedAt === "string" ? obj.generatedAt : undefined,
+  };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -75,7 +79,13 @@ export function getPrecomputedFinancials(ticker: string): NormalizedFinancials[]
 export function getPrecomputedDocuments(ticker: string): { documents: CvmDocument[]; companyName: string } | null {
   const raw = readCacheFile("documents", ticker);
   if (!raw) return null;
-  return parseDocumentsCache(raw);
+  const parsed = parseDocumentsCache(raw);
+  if (!parsed) return null;
+  const generatedAt = parsed.generatedAt ? Date.parse(parsed.generatedAt) : NaN;
+  if (!Number.isFinite(generatedAt) || Date.now() - generatedAt > 7 * 24 * 60 * 60 * 1000) {
+    return null;
+  }
+  return { documents: parsed.documents, companyName: parsed.companyName };
 }
 
 // ─── Quarterly cache ──────────────────────────────────────────────────────────
@@ -118,3 +128,4 @@ export function getPrecomputedQuarterlyFinancials(ticker: string): QuarterlyFina
 
   return latestCachedYear >= expectedYear ? quarterly : null;
 }
+
