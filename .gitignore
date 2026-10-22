@@ -27,6 +27,7 @@ pnpm-debug.log*
 
 # misc
 .vercel/
+.test-tmp/
 
 # typescript
 tsconfig.tsbuildinfo
@@ -34,3 +35,4 @@ tsconfig.tsbuildinfo
 # local audit outputs
 cvm-audit.json
 cvm-audit*.json
+

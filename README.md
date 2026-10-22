@@ -36,6 +36,68 @@ O objetivo é reduzir o trabalho manual de coleta e leitura de dados financeiros
 
 ---
 
+## Como instalar e usar no Windows
+
+### Pré-requisitos
+
+- Node.js 20 ou superior.
+- Git.
+- Conexão com a internet para consultar dados públicos da CVM e cotações do Yahoo Finance.
+
+O projeto não exige token, chave de API ou arquivo `.env.local` para funcionar.
+
+### Primeira instalação
+
+Abra o PowerShell e execute:
+
+```powershell
+cd "$env:USERPROFILE\Documents"
+git clone https://github.com/SamuelMonsalvesMoreira/fundamental-copilot-br-personal.git
+cd fundamental-copilot-br-personal
+npm ci
+npm run dev
+```
+
+Quando o terminal mostrar que o servidor está pronto, abra:
+
+```text
+http://localhost:3000
+```
+
+Na página inicial, pesquise um ticker da B3, por exemplo `PETR4`, `VALE3` ou `ITUB4`. O dashboard carrega a cotação pelo Yahoo Finance e os fundamentos pelos dados públicos da CVM.
+
+Para encerrar o servidor, volte ao PowerShell e pressione `Ctrl + C`.
+
+### Abrir novamente
+
+Nas próximas vezes, não é necessário instalar tudo de novo:
+
+```powershell
+cd "$env:USERPROFILE\Documents\fundamental-copilot-br-personal"
+npm run dev
+```
+
+### Baixar atualizações do GitHub
+
+```powershell
+cd "$env:USERPROFILE\Documents\fundamental-copilot-br-personal"
+git pull
+npm ci
+npm run dev
+```
+
+### Salvar suas alterações no GitHub
+
+```powershell
+git add .
+git commit -m "Descreva aqui o que mudou"
+git push
+```
+
+Execute os três comandos acima somente depois de modificar algum arquivo.
+
+---
+
 ## Rotas principais
 
 | Rota | Descrição |
@@ -400,3 +462,4 @@ src/
     ├── check-cvm-financials.ts   ← auditoria via API local
     └── precompute-cvm-cache.ts   ← geração do cache pré-computado
 ```
+
