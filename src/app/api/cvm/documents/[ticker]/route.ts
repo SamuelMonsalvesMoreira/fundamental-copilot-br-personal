@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCvmCompanyByTicker } from "@/lib/cvm/company-map";
+import { resolveCvmCompanyByTicker } from "@/lib/cvm/company-resolver";
 import { fetchCvmDocuments } from "@/lib/cvm/documents-client";
 import { getPrecomputedDocuments } from "@/lib/cvm/precomputed-cache";
 import type { CvmDocumentsResponse } from "@/lib/cvm/documents-types";
@@ -12,7 +12,7 @@ export async function GET(
   const upper = ticker.toUpperCase();
   const updatedAt = new Date().toISOString();
 
-  const company = getCvmCompanyByTicker(upper);
+  const company = await resolveCvmCompanyByTicker(upper);
 
   if (!company || !company.hasCvmMapping || !company.cvmCode) {
     const body: CvmDocumentsResponse = {
@@ -52,3 +52,4 @@ export async function GET(
 
   return NextResponse.json(body);
 }
+

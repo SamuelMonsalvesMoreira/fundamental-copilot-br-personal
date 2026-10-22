@@ -29,6 +29,7 @@ import type { CoverageStatus } from "../src/data/coverage-types";
 
 const CONCURRENCY = Number(process.env.CVM_CONCURRENCY ?? 2);
 const CACHE_ROOT = join(process.cwd(), "src/data/cvm-cache");
+const DOCUMENTS_ONLY = process.argv.includes("--documents-only");
 
 const ELIGIBLE_STATUSES = new Set<CoverageStatus>([
   "full_analysis",
@@ -80,13 +81,15 @@ async function processTicker(ticker: string): Promise<TickerResult> {
   const errors: string[] = [];
 
   // ── Financials ──────────────────────────────────────────────────────────────
-  try {
-    const financials = await getAnnualDfpFinancials(ticker, cvmCode);
-    financialsYears = financials.length;
-    const financialsPath = join(CACHE_ROOT, "financials", `${ticker}.json`);
-    writeFileSync(financialsPath, JSON.stringify({ ticker, companyName, generatedAt: new Date().toISOString(), financials }, null, 2), "utf-8");
-  } catch (err) {
-    errors.push(`financials: ${err instanceof Error ? err.message : String(err)}`);
+  if (!DOCUMENTS_ONLY) {
+    try {
+      const financials = await getAnnualDfpFinancials(ticker, cvmCode);
+      financialsYears = financials.length;
+      const financialsPath = join(CACHE_ROOT, "financials", `${ticker}.json`);
+      writeFileSync(financialsPath, JSON.stringify({ ticker, companyName, generatedAt: new Date().toISOString(), financials }, null, 2), "utf-8");
+    } catch (err) {
+      errors.push(`financials: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // ── Documents ───────────────────────────────────────────────────────────────
@@ -128,7 +131,7 @@ async function main(): Promise<void> {
       })
     : allTickers;
 
-  console.log(`\nPrecomputing CVM cache for ${tickers.length} tickers (concurrency=${CONCURRENCY})${skipExisting ? " [skip-existing]" : ""}...\n`);
+  console.log(`\nPrecomputing CVM ${DOCUMENTS_ONLY ? "document" : "financial and document"} cache for ${tickers.length} tickers (concurrency=${CONCURRENCY})${skipExisting ? " [skip-existing]" : ""}...\n`);
 
   const tasks = tickers.map(ticker => async () => {
     process.stdout.write(`  [${ticker}] fetching...`);
@@ -176,3 +179,4 @@ main().catch(err => {
   console.error("Fatal error:", err);
   process.exit(1);
 });
+

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCvmCompanyByTicker } from "@/lib/cvm/company-map";
+import { resolveCvmCompanyByTicker } from "@/lib/cvm/company-resolver";
 import { getPrecomputedQuarterlyFinancials } from "@/lib/cvm/precomputed-cache";
 import { getQuarterlyItrFinancials } from "@/lib/cvm/itr-client";
 import { getPrecomputedFinancials } from "@/lib/cvm/precomputed-cache";
@@ -12,7 +12,7 @@ export async function GET(
   const upper = ticker.toUpperCase();
   const t0 = process.env.NODE_ENV === "development" ? Date.now() : 0;
 
-  const company = getCvmCompanyByTicker(upper);
+  const company = await resolveCvmCompanyByTicker(upper);
 
   if (!company || !company.hasCvmMapping || !company.cvmCode) {
     return NextResponse.json({
@@ -79,3 +79,4 @@ export async function GET(
     );
   }
 }
+
