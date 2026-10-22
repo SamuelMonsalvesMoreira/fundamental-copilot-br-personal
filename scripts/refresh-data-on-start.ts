@@ -139,7 +139,7 @@ async function main(): Promise<void> {
 
   if (ok) {
     writeFileSync(statePath, JSON.stringify({ checkedAt: new Date().toISOString(), sources: fingerprints }, null, 2));
-    console.log("[dados] Dados CVM e projeções atualizados.");
+    console.log("[dados] Dados CVM e projeções atualizados. Falhas isoladas usam consulta ao vivo.");
   } else {
     console.warn("[dados] A atualização ficou incompleta; o projeto iniciará com o último cache válido.");
   }
