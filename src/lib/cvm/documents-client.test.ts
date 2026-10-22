@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterAll, beforeAll, describe, it, expect, vi } from "vitest";
 import {
   classifyDocumentType,
   parseCvmDate,
@@ -6,6 +6,7 @@ import {
   sortDocumentsDesc,
   parseCatalogCsv,
   normalizeCatalogRow,
+  parseIpeCsv,
 } from "./documents-client";
 import type { CatalogRow } from "./documents-client";
 import type { CvmDocument } from "./documents-types";
@@ -306,6 +307,25 @@ describe("parseCatalogCsv", () => {
   });
 });
 
+describe("parseIpeCsv", () => {
+  it("parses recent company communications and preserves quoted semicolons", () => {
+    const csv = [
+      "CNPJ_Companhia;Nome_Companhia;Codigo_CVM;Data_Referencia;Categoria;Tipo;Especie;Assunto;Data_Entrega;Tipo_Apresentacao;Protocolo_Entrega;Versao;Link_Download",
+      '92.791.243/0001-03;IRANI PAPEL E EMBALAGEM S.A.;2429;2026-10-20;Comunicado ao Mercado;Comunicado ao Mercado;;"Resultados; terceiro trimestre";2026-10-20 18:30:00;AP;123456;1;https://www.rad.cvm.gov.br/doc.pdf',
+      "33.000.167/0001-01;PETROBRAS;9512;2026-10-20;Fato Relevante;Fato Relevante;;Outro;2026-10-20;AP;999;1;https://example.com",
+    ].join("\n");
+
+    const documents = parseIpeCsv(csv, "2429");
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      date: "2026-10-20",
+      category: "Comunicado",
+      title: "Resultados; terceiro trimestre",
+      url: "https://www.rad.cvm.gov.br/doc.pdf",
+    });
+  });
+});
+
 // ─── normalizeCatalogRow ─────────────────────────────────────────────────────
 
 function makeRow(overrides: Partial<CatalogRow> = {}): CatalogRow {
@@ -324,6 +344,13 @@ function makeRow(overrides: Partial<CatalogRow> = {}): CatalogRow {
 }
 
 describe("normalizeCatalogRow", () => {
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
+  });
+
+  afterAll(() => vi.useRealTimers());
+
   it("returns a CvmDocument for a valid row", () => {
     const doc = normalizeCatalogRow(makeRow());
     expect(doc).not.toBeNull();
@@ -380,3 +407,4 @@ describe("normalizeCatalogRow", () => {
     expect(doc!.id).toBeTruthy();
   });
 });
+
