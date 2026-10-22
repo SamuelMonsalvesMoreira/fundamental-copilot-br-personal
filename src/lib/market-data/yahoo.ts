@@ -15,6 +15,27 @@ interface YahooChartResponse {
   };
 }
 
+interface YahooSearchQuote {
+  symbol?: string;
+  shortname?: string;
+  longname?: string;
+  quoteType?: string;
+  exchange?: string;
+}
+
+interface YahooSearchResponse {
+  quotes?: YahooSearchQuote[];
+}
+
+export interface YahooSecurityProfile {
+  ticker: string;
+  symbol: string;
+  shortName?: string;
+  longName?: string;
+  quoteType?: string;
+  exchange?: string;
+}
+
 interface YahooReportedValue {
   raw?: number;
 }
@@ -43,6 +64,50 @@ const YAHOO_HEADERS = {
 function toYahooSymbol(ticker: string): string {
   const normalized = ticker.trim().toUpperCase();
   return normalized.endsWith(".SA") ? normalized : `${normalized}.SA`;
+}
+
+/**
+ * Resolves the display name and instrument type for a B3 ticker without a
+ * token. Used as a discovery hint before matching the company against the
+ * official CVM registry; Yahoo is never treated as the authoritative CVM ID.
+ */
+export async function getYahooSecurityProfile(
+  ticker: string,
+): Promise<YahooSecurityProfile | null> {
+  try {
+    const normalizedTicker = ticker.trim().toUpperCase().replace(/\.SA$/, "");
+    if (!/^[A-Z0-9]{4,12}$/.test(normalizedTicker)) return null;
+
+    const symbol = toYahooSymbol(normalizedTicker);
+    const url = new URL("https://query1.finance.yahoo.com/v1/finance/search");
+    url.searchParams.set("q", symbol);
+    url.searchParams.set("quotesCount", "8");
+    url.searchParams.set("newsCount", "0");
+
+    const response = await fetch(url, {
+      headers: YAHOO_HEADERS,
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as YahooSearchResponse;
+    const exact = (data.quotes ?? []).find(
+      item => item.symbol?.toUpperCase() === symbol,
+    );
+    if (!exact?.symbol) return null;
+
+    return {
+      ticker: normalizedTicker,
+      symbol: exact.symbol,
+      shortName: exact.shortname,
+      longName: exact.longname,
+      quoteType: exact.quoteType,
+      exchange: exact.exchange,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function latestRaw(points?: YahooTimeseriesPoint[]): number | undefined {
@@ -133,3 +198,4 @@ export async function getYahooQuote(ticker: string): Promise<MarketDataQuote | n
     return null;
   }
 }
+

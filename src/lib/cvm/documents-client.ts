@@ -13,6 +13,7 @@
 
 import { unzipSync } from "fflate";
 import { fetchYearZip } from "./dfp-client";
+import { fetchItrYearZip } from "./itr-client";
 import type { CvmDocument, EnetHit, EnetResponse } from "./documents-types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -23,6 +24,24 @@ const LOOKBACK_DAYS = 18 * 30; // ~18 months in days
 // Cache: cvmCode → { docs, loadedAt }. TTL = 1 h.
 const DOC_TTL_MS = 60 * 60 * 1000;
 const docCache = new Map<string, { docs: CvmDocument[]; loadedAt: number }>();
+const ipeZipCache = new Map<number, Uint8Array>();
+
+async function fetchIpeYearZip(year: number): Promise<Uint8Array | null> {
+  const cached = ipeZipCache.get(year);
+  if (cached) return cached;
+  try {
+    const response = await fetch(
+      `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_${year}.zip`,
+      { cache: "no-store", signal: AbortSignal.timeout(20_000) },
+    );
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    ipeZipCache.set(year, bytes);
+    return bytes;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Document type → friendly category label ──────────────────────────────────
 
@@ -34,6 +53,9 @@ const TYPE_LABELS: Record<string, string> = {
   "Fato Relevante":        "Fato Relevante",
   "Aviso aos Acionistas":  "Comunicado",
   "Comunicado ao Mercado": "Comunicado",
+  "Dados Econômico-Financeiros": "Resultado e apresentação",
+  "Calendário de Eventos Corporativos": "Calendário corporativo",
+  "Reunião da Administração": "Reunião da administração",
   AGO:                     "Assembleia",
   AGE:                     "Assembleia",
   "Edital de AGO":         "Assembleia",
@@ -59,7 +81,7 @@ export function classifyDocumentType(typeCode: string | undefined): string {
  */
 export function parseCvmDate(raw: string | undefined): string | null {
   if (!raw) return null;
-  const datePart = raw.split("T")[0];
+  const datePart = raw.trim().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return null;
   const ts = Date.parse(datePart);
   if (isNaN(ts)) return null;
@@ -142,6 +164,74 @@ export function parseCatalogCsv(text: string, cvmCode: string): CatalogRow[] {
   }
 
   return rows;
+}
+
+function splitSemicolonRow(line: string): string[] {
+  const fields: string[] = [];
+  let value = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '"') {
+      if (quoted && line[index + 1] === '"') {
+        value += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === ";" && !quoted) {
+      fields.push(value.trim());
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+  fields.push(value.trim());
+  return fields;
+}
+
+/** Parses recent IPE communications (facts, notices and market releases). */
+export function parseIpeCsv(text: string, cvmCode: string): CvmDocument[] {
+  const lines = text.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = splitSemicolonRow(lines[0]);
+  const indexOf = (name: string) => headers.indexOf(name);
+  const idx = {
+    code: indexOf("Codigo_CVM"),
+    category: indexOf("Categoria"),
+    type: indexOf("Tipo"),
+    species: indexOf("Especie"),
+    subject: indexOf("Assunto"),
+    delivery: indexOf("Data_Entrega"),
+    protocol: indexOf("Protocolo_Entrega"),
+    link: indexOf("Link_Download"),
+  };
+  if (Object.values(idx).some(value => value < 0)) return [];
+  const target = parseInt(cvmCode, 10);
+  if (!Number.isFinite(target)) return [];
+
+  const documents: CvmDocument[] = [];
+  for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
+    const columns = splitSemicolonRow(lines[lineIndex]);
+    if (parseInt(columns[idx.code] ?? "", 10) !== target) continue;
+    const date = parseCvmDate(columns[idx.delivery]);
+    if (!date || !isWithinLookback(date)) continue;
+    const categoryRaw = columns[idx.category] || columns[idx.type] || "Documento CVM";
+    const type = columns[idx.type] || categoryRaw;
+    const subject = columns[idx.subject] || columns[idx.species] || type;
+    const protocol = columns[idx.protocol] || `${cvmCode}-${date}-${lineIndex}`;
+    const link = columns[idx.link];
+    documents.push({
+      id: `ipe-${protocol}`,
+      date,
+      category: classifyDocumentType(categoryRaw),
+      title: subject,
+      type,
+      url: link?.startsWith("http") ? link : undefined,
+      source: "CVM",
+    });
+  }
+  return documents;
 }
 
 /**
@@ -239,33 +329,47 @@ export async function fetchCvmDocuments(
   // filings within the 18-month lookback window.
   const yearsToCheck = [currentYear - 2, currentYear - 1, currentYear];
 
-  const docArrays = await Promise.all(
-    yearsToCheck.map(async (year): Promise<CvmDocument[]> => {
+  const docArrays = await Promise.all(yearsToCheck.flatMap(year => [
+    (async (): Promise<CvmDocument[]> => {
       const zip = await fetchYearZip(year);
       if (!zip) return [];
-
       const filename = `dfp_cia_aberta_${year}.csv`;
-      let extracted: Record<string, Uint8Array>;
       try {
-        extracted = unzipSync(zip, { filter: (f) => f.name === filename });
-      } catch {
-        return [];
-      }
+        const bytes = unzipSync(zip, { filter: file => file.name === filename })[filename];
+        if (!bytes) return [];
+        return parseCatalogCsv(new TextDecoder("latin1").decode(bytes), cvmCode)
+          .map(normalizeCatalogRow).filter((doc): doc is CvmDocument => doc !== null);
+      } catch { return []; }
+    })(),
+    (async (): Promise<CvmDocument[]> => {
+      const zip = await fetchItrYearZip(year);
+      if (!zip) return [];
+      const filename = `itr_cia_aberta_${year}.csv`;
+      try {
+        const bytes = unzipSync(zip, { filter: file => file.name === filename })[filename];
+        if (!bytes) return [];
+        return parseCatalogCsv(new TextDecoder("latin1").decode(bytes), cvmCode)
+          .map(normalizeCatalogRow).filter((doc): doc is CvmDocument => doc !== null);
+      } catch { return []; }
+    })(),
+    (async (): Promise<CvmDocument[]> => {
+      const zip = await fetchIpeYearZip(year);
+      if (!zip) return [];
+      const filename = `ipe_cia_aberta_${year}.csv`;
+      try {
+        const bytes = unzipSync(zip, { filter: file => file.name === filename })[filename];
+        return bytes ? parseIpeCsv(new TextDecoder("latin1").decode(bytes), cvmCode) : [];
+      } catch { return []; }
+    })(),
+  ]));
 
-      const fileBytes = extracted[filename];
-      if (!fileBytes) return [];
-
-      const text = new TextDecoder("latin1").decode(fileBytes);
-      return parseCatalogCsv(text, cvmCode)
-        .map(normalizeCatalogRow)
-        .filter((d): d is CvmDocument => d !== null);
-    }),
-  );
-
-  const docs = sortDocumentsDesc(docArrays.flat()).slice(0, MAX_RESULTS);
+  const unique = new Map<string, CvmDocument>();
+  for (const doc of sortDocumentsDesc(docArrays.flat())) unique.set(doc.id, doc);
+  const docs = [...unique.values()].slice(0, MAX_RESULTS);
   docCache.set(cvmCode, { docs, loadedAt: Date.now() });
   return docs;
 }
 
 // Re-export raw type for route layer
 export type { EnetResponse };
+

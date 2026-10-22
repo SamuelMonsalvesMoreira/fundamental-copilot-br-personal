@@ -9,6 +9,7 @@ import HistoricalChart from "@/components/dashboard/HistoricalChart";
 import MultiplesTable from "@/components/dashboard/MultiplesTable";
 import DocumentsPanel from "@/components/dashboard/DocumentsPanel";
 import CvmFinancialsTable from "@/components/dashboard/CvmFinancialsTable";
+import QuarterlyFinancialsPanel from "@/components/dashboard/QuarterlyFinancialsPanel";
 import DataSourceNotice from "@/components/dashboard/DataSourceNotice";
 import FundamentalIndicators from "@/components/dashboard/FundamentalIndicators";
 import FundamentalDiagnosis from "@/components/dashboard/FundamentalDiagnosis";
@@ -412,6 +413,8 @@ export default function DashboardPageClient() {
   const [insuranceLoading, setInsuranceLoading] = useState(false);
   const [instrumentData, setInstrumentData]     = useState<InstrumentInfoResponse | null>(null);
   const [instrumentLoading, setInstrumentLoading] = useState(false);
+  const [resolvedAsset, setResolvedAsset]       = useState<B3Asset | null>(null);
+  const [assetResolving, setAssetResolving]     = useState(false);
 
   // ── Static lookups (no network) ───────────────────────────────────────────
   const companyData = useMemo(
@@ -419,10 +422,12 @@ export default function DashboardPageClient() {
     [selectedTicker],
   );
 
-  const b3Entry = useMemo(
+  const staticB3Entry = useMemo(
     () => B3_UNIVERSE.find(c => c.ticker === selectedTicker),
     [selectedTicker],
   );
+
+  const b3Entry = resolvedAsset ?? staticB3Entry;
 
   const isBank = useMemo(
     () => b3Entry !== undefined && classifyB3Asset(b3Entry) === "bank",
@@ -519,6 +524,31 @@ export default function DashboardPageClient() {
     setBankData(null);
     setInstrumentData(null);
   }, [selectedTicker]);
+
+  // Unknown or quote-only tickers get a live discovery attempt. Yahoo is used
+  // only for the listed name/quote; the company identity for fundamentals must
+  // still be matched against the official CVM registry.
+  useEffect(() => {
+    if (!selectedTicker || (staticB3Entry?.hasCvmMapping && staticB3Entry.coverageStatus !== "quote_only")) {
+      setResolvedAsset(null);
+      setAssetResolving(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let active = true;
+    setResolvedAsset(null);
+    setAssetResolving(true);
+    fetch(`/api/company/resolve/${encodeURIComponent(selectedTicker)}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then((body: { asset?: B3Asset | null }) => {
+        if (active) setResolvedAsset(body.asset ?? null);
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setAssetResolving(false); });
+
+    return () => { active = false; controller.abort(); };
+  }, [selectedTicker, staticB3Entry]);
 
   // ── Market quote fetch ────────────────────────────────────────────────────
   useEffect(() => {
@@ -697,6 +727,10 @@ export default function DashboardPageClient() {
       {/* ── State 1: no ticker ──────────────────────────────────────────────── */}
       {!selectedTicker ? (
         <NoTickerView onTicker={handleSelectCompany} />
+      ) : assetResolving && !b3Entry ? (
+        <div style={{ padding: "72px 24px", textAlign: "center", color: "#64748b", fontSize: 14 }}>
+          Procurando {selectedTicker} na B3, Yahoo Finance e cadastro oficial da CVM...
+        </div>
 
       /* ── State 2: full dashboard (mock data or successful CVM analysis) ─── */
       ) : effectiveCompanyData ? (
@@ -777,6 +811,7 @@ export default function DashboardPageClient() {
                   )
                 )}
                 <HistoricalChart data={activeFinancials} />
+                <QuarterlyFinancialsPanel ticker={selectedTicker} />
                 <CvmFinancialsTable ticker={selectedTicker} enabled={true} />
                 {!isCvmAnalysis && (
                   <div style={{
@@ -909,6 +944,9 @@ export default function DashboardPageClient() {
                 Dados bancários indisponíveis.
               </div>
             )}
+            <div style={{ marginTop: 14 }}>
+              <DocumentsPanel ticker={selectedTicker} />
+            </div>
           </div>
         </>
 
@@ -1052,3 +1090,4 @@ export default function DashboardPageClient() {
     </div>
   );
 }
+

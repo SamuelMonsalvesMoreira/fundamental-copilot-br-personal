@@ -43,6 +43,9 @@ export default function AppHeader({
       c.subsector.toLowerCase().includes(q),
     ).slice(0, 8);
   }, [query]);
+  const normalizedQuery = query.trim().toUpperCase().replace(/\.SA$/, "");
+  const canSearchTicker = /^[A-Z]{4}\d{1,2}$/.test(normalizedQuery);
+  const exactSuggestion = suggestions.some(c => c.ticker === normalizedQuery);
 
   useEffect(() => {
     if (!showSearch || !onSelectCompany) return;
@@ -59,6 +62,13 @@ export default function AppHeader({
     if (!onSelectCompany) return;
     onSelectCompany(company.ticker);
     setQuery(company.ticker);
+    setOpen(false);
+  }
+
+  function handleTickerSearch() {
+    if (!onSelectCompany || !canSearchTicker) return;
+    onSelectCompany(normalizedQuery);
+    setQuery(normalizedQuery);
     setOpen(false);
   }
 
@@ -89,6 +99,12 @@ export default function AppHeader({
             placeholder="Buscar ticker ou empresa... Ex: WEGE3, PETR4, VALE3"
             onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => { if (query) setOpen(true); }}
+            onKeyDown={e => {
+              if (e.key === "Enter" && canSearchTicker) {
+                e.preventDefault();
+                handleTickerSearch();
+              }
+            }}
           />
           {query ? (
             <button
@@ -102,7 +118,7 @@ export default function AppHeader({
             <kbd style={styles.kbdHint}>⌘K</kbd>
           )}
 
-          {open && suggestions.length > 0 && (
+          {open && (suggestions.length > 0 || canSearchTicker) && (
             <div style={styles.dropdown}>
               {suggestions.map(c => (
                 <button
@@ -129,6 +145,15 @@ export default function AppHeader({
                   </div>
                 </button>
               ))}
+              {canSearchTicker && !exactSuggestion && (
+                <button onClick={handleTickerSearch} style={styles.dropdownItem}>
+                  <div style={styles.dropdownLeft}>
+                    <span style={styles.dropdownTicker}>{normalizedQuery}</span>
+                    <span style={styles.dropdownName}>Pesquisar cotação e dados públicos</span>
+                  </div>
+                  <span style={styles.searchAction}>Pesquisar</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -316,6 +341,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 20,
     whiteSpace: "nowrap",
   },
+  searchAction: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#2563eb",
+    whiteSpace: "nowrap",
+  },
   navLinks: {
     display: "flex",
     gap: 2,
@@ -335,3 +366,4 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#1e293b",
   },
 };
+

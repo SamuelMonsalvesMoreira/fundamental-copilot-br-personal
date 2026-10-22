@@ -77,6 +77,27 @@ cd "$env:USERPROFILE\Documents\fundamental-copilot-br-personal"
 npm run dev
 ```
 
+Antes de abrir o servidor, o projeto consulta a versão dos arquivos oficiais
+DFP, ITR e IPE da CVM. Se houver publicação nova, ele atualiza os dados anuais,
+trimestrais, documentos e projeções automaticamente. Se nada mudou, essa
+verificação termina rapidamente e não baixa os ZIPs outra vez.
+
+Para forçar uma atualização manual:
+
+```powershell
+$env:FORCE_DATA_REFRESH="1"
+npm run data:refresh
+Remove-Item Env:FORCE_DATA_REFRESH
+```
+
+Para iniciar sem verificar a CVM (por exemplo, quando estiver sem internet):
+
+```powershell
+$env:SKIP_DATA_REFRESH="1"
+npm run dev
+Remove-Item Env:SKIP_DATA_REFRESH
+```
+
 ### Baixar atualizações do GitHub
 
 ```powershell
@@ -119,17 +140,18 @@ A plataforma não produz preço-alvo, recomendação de compra/venda ou estimati
 
 ## Funcionalidades atuais
 
-- Busca por empresas brasileiras por ticker ou nome.
+- Busca por empresas brasileiras por ticker ou nome, com tentativa dinâmica para tickers ainda não cadastrados.
 - Dashboard de análise fundamentalista com dois estágios de carregamento:
   - dados de mercado (Yahoo Finance) exibidos imediatamente;
   - dados CVM carregados a partir do cache pré-computado em seguida.
-- Integração com dados financeiros anuais da CVM (DFP consolidada).
+- Integração com dados anuais (DFP) e trimestrais (ITR) da CVM, incluindo visão LTM.
+- Atualização automática dos caches oficiais ao executar `npm run dev`.
 - Integração com cotações via Yahoo Finance, sem chave de API.
 - Indicadores financeiros organizados por categoria (crescimento, margens, caixa, endividamento, mercado).
 - Diagnóstico fundamentalista baseado em regras.
 - Tabela histórica de demonstrações financeiras.
 - Comparáveis por setor.
-- Documentos oficiais CVM (DFP, ITR, FRE, Fatos Relevantes) com link para o visualizador oficial.
+- Documentos oficiais CVM (DFP, ITR, fatos relevantes e comunicados IPE) com link para o visualizador oficial.
 - Página de cobertura da B3.
 - Página de metodologia.
 - Página institucional "Sobre".
@@ -215,7 +237,7 @@ Para regenerar o cache trimestral:
 npm run cvm:precompute:quarterly
 ```
 
-A rota `/api/cvm/quarterly/[ticker]` serve o cache pré-computado quando disponível. Esta rota é infraestrutura para o Forecast Layer futuro e **não** é usada no dashboard atual.
+A rota `/api/cvm/quarterly/[ticker]` serve o cache pré-computado quando disponível. O dashboard usa essa rota para exibir os últimos trimestres e o acumulado dos últimos 12 meses (LTM), e a camada de projeções usa a série trimestral como histórico observado.
 
 > **Nota:** Os arquivos ZIP brutos da CVM são mantidos apenas em memória pelo servidor e nunca são gravados em disco — somente o JSON normalizado do cache é armazenado no repositório. O pipeline ITR é mais pesado que o DFP (~33 MB por ano vs ~13 MB); utilize a flag `CVM_ITR_START_YEAR` para limitar o intervalo de anos se necessário.
 
@@ -462,4 +484,5 @@ src/
     ├── check-cvm-financials.ts   ← auditoria via API local
     └── precompute-cvm-cache.ts   ← geração do cache pré-computado
 ```
+
 
