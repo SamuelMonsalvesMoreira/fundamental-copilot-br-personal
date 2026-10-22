@@ -87,6 +87,7 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("SUZB3",  "Suzano S.A.",                                         "Suzano",         "Papel e Celulose",       "Celulose",                       CA,  false, true),
   stock("KLBN11", "Klabin S.A.",                                         "Klabin",         "Papel e Celulose",       "Papel e Embalagens",             CA,  false, true,  "unit"),
   stock("DXCO3",  "Dexco S.A.",                                          "Dexco",          "Papel e Celulose",       "Painéis de Madeira",             CA, false, true),
+  stock("RANI3",  "Irani Papel e Embalagem S.A.",                        "Irani",          "Papel e Celulose",       "Papel e Embalagens",             CA, false, true),
 
   // ── Energia Elétrica ─────────────────────────────────────────────────────────
   stock("EGIE3",  "Engie Brasil Energia S.A.",                           "Engie Brasil",   "Energia Elétrica",       "Geração de Energia",             FA,  true,  true),
@@ -263,3 +264,4 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("NVDC34",  "NVIDIA Corporation",                                  "NVDC34",         "BDR",                    "Semicondutores (EUA)",           SS, false, false, "bdr"),
   stock("GOOGL34", "Alphabet Inc. (Google)",                              "GOOGL34",        "BDR",                    "Tecnologia (EUA)",               SS, false, false, "bdr"),
 ];
+
