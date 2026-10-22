@@ -361,8 +361,9 @@ export default function SobrePage() {
             marginTop: 14, background: "#f8fafc", border: "1px solid #e2e8f0",
             borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#64748b", lineHeight: 1.6,
           }}>
-            Cobertura atual aproximada: 5 ativos com Análise completa · 27 com Análise CVM ·
-            3 com Dados CVM · ~29 com Modelo específico (bancos, FIIs, ETFs) · 98 com Cotação.
+            A cobertura é dinâmica: ativos com dados CVM prontos abrem diretamente; os demais
+            podem iniciar uma busca sob demanda. Bancos, seguradoras, FIIs, ETFs e BDRs usam
+            modelos próprios para evitar comparações inadequadas.
           </div>
         </Card>
 
@@ -376,6 +377,7 @@ export default function SobrePage() {
             "Tabela de múltiplos comparáveis setoriais",
             "Integração sem token com Yahoo Finance para preço, variação diária e valor de mercado quando disponível",
             "Endpoint CVM DFP — download, parsing e normalização dos seis exercícios anuais mais recentes",
+            "CVM ITR trimestral — exibe o ano corrente até o trimestre mais recente, claramente marcado como período parcial",
             "Modo Dados CVM — análise fundamentalista com dados reais quando disponíveis",
             "DataSourceNotice — identifica a origem de cada campo antes do uso em análise",
             "Página de metodologia — explica fonte de dados, cálculos de indicadores, diagnóstico e limitações",
@@ -447,3 +449,4 @@ export default function SobrePage() {
     </div>
   );
 }
+
