@@ -73,22 +73,22 @@ export default function AppHeader({
   }
 
   return (
-    <header style={styles.header}>
+    <header className="app-header" style={styles.header}>
       {/* Brand — links to landing */}
-      <Link href="/" style={styles.brand}>
+      <Link href="/" aria-label="Fundamental Copilot BR" style={styles.brand}>
         <img
           src="/logo/logo-icon.svg"
           alt=""
           aria-hidden="true"
           style={styles.brandIcon}
         />
-        <span style={styles.brandText}>Fundamental Copilot</span>
-        <span style={styles.brandBadge}>BR</span>
+        <span className="app-header-brand-text" style={styles.brandText}>Fundamental Copilot</span>
+        <span className="app-header-brand-badge" style={styles.brandBadge}>BR</span>
       </Link>
 
       {/* Centre slot: search typeahead OR flex spacer */}
       {showSearch && onSelectCompany ? (
-        <div ref={wrapRef} style={styles.searchWrap}>
+        <div ref={wrapRef} className="app-header-search" style={styles.searchWrap}>
           <svg style={styles.searchIcon} width="15" height="15" viewBox="0 0 16 16" fill="none">
             <circle cx="6.5" cy="6.5" r="5" stroke="#64748b" strokeWidth="1.5" />
             <path d="M10.5 10.5L14 14" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
@@ -162,7 +162,7 @@ export default function AppHeader({
       )}
 
       {/* Nav links */}
-      <nav style={styles.navLinks}>
+      <nav className="app-header-nav" aria-label="Navegação principal" style={styles.navLinks}>
         {NAV_LINKS.map(({ label, href }) => {
           const isActive = href !== "#" && (
             href === "/" ? pathname === "/" : pathname.startsWith(href)
