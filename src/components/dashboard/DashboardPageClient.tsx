@@ -87,7 +87,7 @@ const TABS = ["Visão Geral", "Financeiros", "Indicadores", "Projeções", "Comp
 
 function TabBar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (t: string) => void }) {
   return (
-    <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
+    <div className="dashboard-tabbar" style={{ background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
       {TABS.map(tab => (
         <button
           key={tab}
@@ -98,6 +98,7 @@ function TabBar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (t
             background: "none", border: "none",
             borderBottom: activeTab === tab ? "2px solid #2563eb" : "2px solid transparent",
             cursor: "pointer", fontFamily: "inherit", marginBottom: -1,
+            minHeight: 44, whiteSpace: "nowrap", flexShrink: 0,
           }}
         >
           {tab}
@@ -835,7 +836,7 @@ export default function DashboardPageClient() {
             )}
 
             {activeTab === "Financeiros" && (
-              <div style={{ maxWidth: 900 }}>
+              <div className="dashboard-wide-panel">
                 {!isCvmAnalysis && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>
@@ -895,27 +896,35 @@ export default function DashboardPageClient() {
             )}
 
             {activeTab === "Indicadores" && (
-              <div style={{ maxWidth: 760 }}>
-                <FundamentalIndicators financials={indicatorFinancials} marketQuote={marketQuote} />
-                {indicatorFinancials.length === 0 && companyData && (
-                  <div style={{
-                    background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
-                    padding: "18px 22px", fontSize: 13, color: "#64748b", lineHeight: 1.6,
-                  }}>
-                    Indicadores calculados a partir de dados CVM. Selecione &quot;Dados CVM&quot; na aba Financeiros para habilitar, ou busque uma empresa com análise CVM disponível.
-                  </div>
-                )}
+              <div className="indicators-layout">
+                <div style={{ minWidth: 0 }}>
+                  <FundamentalIndicators financials={indicatorFinancials} marketQuote={marketQuote} />
+                  {indicatorFinancials.length === 0 && companyData && (
+                    <div style={{
+                      background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+                      padding: "18px 22px", fontSize: 13, color: "#64748b", lineHeight: 1.6,
+                    }}>
+                      Indicadores calculados a partir de dados CVM. Selecione &quot;Dados CVM&quot; na aba Financeiros para habilitar, ou busque uma empresa com análise CVM disponível.
+                    </div>
+                  )}
+                </div>
+                <aside className="indicators-sidebar" aria-label="Resumo da análise">
+                  {indicatorFinancials.length > 0 && (
+                    <FundamentalDiagnosis financials={indicatorFinancials} />
+                  )}
+                  <DocumentsPanel ticker={selectedTicker} />
+                </aside>
               </div>
             )}
 
             {activeTab === "Projeções" && (
-              <div style={{ maxWidth: 760 }}>
+              <div className="dashboard-wide-panel">
                 <ForecastPanel ticker={selectedTicker} />
               </div>
             )}
 
             {activeTab === "Comparáveis" && (
-              <div style={{ maxWidth: 760 }}>
+              <div className="dashboard-medium-panel">
                 <MultiplesTable data={effectiveCompanyData.multiples} />
                 {effectiveCompanyData.multiples.length === 0 && (
                   <div style={{
@@ -929,7 +938,7 @@ export default function DashboardPageClient() {
             )}
 
             {activeTab === "Notícias e documentos" && (
-              <div style={{ maxWidth: 700 }}>
+              <div className="dashboard-medium-panel">
                 <DocumentsPanel ticker={selectedTicker} />
               </div>
             )}

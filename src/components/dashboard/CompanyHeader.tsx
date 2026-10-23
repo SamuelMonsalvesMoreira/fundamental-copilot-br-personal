@@ -44,29 +44,29 @@ export default function CompanyHeader({ company, quote, quoteLoading, exportUrl 
   }
 
   return (
-    <div style={styles.wrap}>
-      <div style={styles.left}>
+    <div className="company-header" style={styles.wrap}>
+      <div className="company-header-left" style={styles.left}>
         <div style={styles.logoBox}>
           <div style={styles.tickerLogo}>{company.ticker.slice(0, 3)}</div>
         </div>
-        <div>
+        <div className="company-header-main">
           <div style={styles.nameRow}>
             <h1 style={styles.name}>{company.name}</h1>
             <span style={styles.exchange}>{company.exchange}: {company.ticker}</span>
             <span style={styles.sector}>{company.sector}</span>
           </div>
-          <div style={styles.metaRow}>
+          <div className="company-header-meta" style={styles.metaRow}>
             <span style={styles.metaItem}>Valor de Mercado <strong>{company.marketCap}</strong></span>
-            <span style={styles.metaDivider}>/</span>
+            <span className="company-header-meta-divider" style={styles.metaDivider}>/</span>
             <span style={styles.metaItem}>EV <strong>{company.enterpriseValue}</strong></span>
-            <span style={styles.metaDivider}>/</span>
+            <span className="company-header-meta-divider" style={styles.metaDivider}>/</span>
             <span style={styles.metaItem}>Moeda <strong>{company.currency}</strong></span>
           </div>
         </div>
       </div>
-      <div style={styles.right}>
-        <div style={styles.priceBlock}>
-          <div style={styles.priceLabel}>
+      <div className="company-header-right" style={styles.right}>
+        <div className="company-header-price" style={styles.priceBlock}>
+          <div className="company-header-price-label" style={styles.priceLabel}>
             Preço Atual
             {quoteLoading && (
               <span style={styles.loadingDots}>···</span>
@@ -82,7 +82,7 @@ export default function CompanyHeader({ company, quote, quoteLoading, exportUrl 
           </div>
           <div style={styles.sourceLabel}>{sourceLabel}</div>
         </div>
-        <div style={styles.actions}>
+        <div className="company-header-actions" style={styles.actions}>
           {exportUrl ? (
             <a href={exportUrl} style={{ ...styles.btnPrimary, textDecoration: "none" }}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ marginRight: 5 }}>
