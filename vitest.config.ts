@@ -1,13 +1,16 @@
 import { defineConfig } from "vitest/config";
-import path from "path";
+import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  test: {
-    environment: "node",
-  },
   resolve: {
     alias: {
-      "@": path.resolve("./src"),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // "server-only" lança erro fora do Next; nos testes é inofensivo
+      "server-only": fileURLToPath(new URL("./src/test/server-only-stub.ts", import.meta.url)),
     },
+  },
+  test: {
+    include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
+    environment: "node",
   },
 });
