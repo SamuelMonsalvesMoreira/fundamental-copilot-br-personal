@@ -3,16 +3,13 @@
  *
  * - Lista diária (`/quote/list`): preço, variação, volume, valor de mercado e
  *   subsetor de todas as ações em UMA chamada. Funciona sem token.
- * - Histórico e proventos por ticker (`/quote/{ticker}`): exige o token
- *   gratuito (BRAPI_TOKEN), exceto para alguns tickers de teste da brapi.
- *   São buscados sob demanda e guardados no banco.
- *
- * Plano gratuito: 15 mil requisições/mês. Uso típico: 2 chamadas por dia
- * + 1 por ticker aberto (com cache de 24 h).
+ * - Histórico e proventos por ticker: a fonte principal é o Yahoo (ver
+ *   ../history.ts); a brapi é a reserva, se houver BRAPI_TOKEN.
  */
 import type Database from "better-sqlite3";
 import { fetchWithRetry } from "../http";
 import { trackRun } from "../runs";
+import type { TickerHistoryData } from "../yahoo";
 
 export const BRAPI_SOURCE = "brapi.dev";
 const BASE = "https://brapi.dev/api";
@@ -158,20 +155,21 @@ export async function ingestQuoteList(sqlite: Database.Database, opts: { log?: (
 const RANGES = ["10y", "5y", "2y", "1y", "3mo"] as const;
 
 export function parseDividends(result: QuoteResult) {
-  const out: Array<{ exDate: string; paymentDate: string | null; kind: string; value: number }> = [];
+  // A mesma data ex pode ter dois pagamentos de valor igual, e eles são distintos:
+  // somamos por data e tipo em vez de descartar como duplicados.
+  const byKey = new Map<string, { exDate: string; paymentDate: string | null; kind: string; value: number }>();
   for (const d of result.dividendsData?.cashDividends ?? []) {
     if (!(d.rate > 0)) continue;
     // "data com" = lastDatePrior; data ex = dia útil seguinte (exDate quando informado)
     const ex = d.exDate ?? d.lastDatePrior;
     if (!ex) continue;
-    out.push({
-      exDate: spDate(new Date(ex)),
-      paymentDate: d.paymentDate ? spDate(new Date(d.paymentDate)) : null,
-      kind: (d.label ?? "DIVIDENDO").toUpperCase().trim(),
-      value: d.rate,
-    });
+    const exDate = spDate(new Date(ex));
+    const kind = (d.label ?? "DIVIDENDO").toUpperCase().trim();
+    const cur = byKey.get(`${exDate}|${kind}`);
+    if (cur) cur.value += d.rate;
+    else byKey.set(`${exDate}|${kind}`, { exDate, paymentDate: d.paymentDate ? spDate(new Date(d.paymentDate)) : null, kind, value: d.rate });
   }
-  return out;
+  return [...byKey.values()];
 }
 
 export function parseHistory(result: QuoteResult) {
@@ -185,78 +183,19 @@ export function parseHistory(result: QuoteResult) {
     }));
 }
 
-export interface TickerFetchResult {
-  ticker: string;
-  historyPoints: number;
-  dividends: number;
-  range: string | null;
-}
-
-/**
- * Busca histórico diário (o maior período que o plano permitir) e proventos
- * de um ticker e grava no banco.
- */
-export async function fetchTickerHistory(sqlite: Database.Database, ticker: string): Promise<TickerFetchResult> {
-  ticker = ticker.toUpperCase();
-  const now = new Date().toISOString();
-  const mark = sqlite.prepare(
-    `INSERT OR REPLACE INTO ticker_fetches (ticker, kind, fetched_at, status, message) VALUES (?, 'history', ?, ?, ?)`,
-  );
-
-  let result: QuoteResult | null = null;
-  let usedRange: string | null = null;
+/** Histórico e proventos pela brapi: reserva, se o Yahoo falhar e houver token. */
+export async function fetchBrapiTickerData(rawTicker: string): Promise<TickerHistoryData> {
+  const ticker = rawTicker.toUpperCase();
   let lastErr: unknown = null;
   for (const range of RANGES) {
     try {
-      const body = await brapiGet<{ results: QuoteResult[] }>(`/quote/${encodeURIComponent(ticker)}`, {
-        range,
-        interval: "1d",
-        dividends: "true",
-      });
-      result = body.results?.[0] ?? null;
-      usedRange = range;
-      break;
+      const body = await brapiGet<{ results: QuoteResult[] }>(`/quote/${encodeURIComponent(ticker)}`, { range, interval: "1d", dividends: "true" });
+      const result = body.results?.[0];
+      if (result) return { history: parseHistory(result), dividends: parseDividends(result), source: BRAPI_SOURCE, range };
     } catch (err) {
       lastErr = err;
-      // sem token, ou ticker inexistente: não adianta tentar períodos menores
       if (err instanceof BrapiError && (err.code === "MISSING_TOKEN" || err.status === 404)) break;
     }
   }
-
-  if (!result) {
-    const msg = lastErr instanceof Error ? lastErr.message : "falha ao buscar histórico";
-    mark.run(ticker, now, "error", msg);
-    throw lastErr instanceof Error ? lastErr : new BrapiError(msg);
-  }
-
-  const history = parseHistory(result);
-  const divs = parseDividends(result);
-  const upQuote = sqlite.prepare(
-    `INSERT INTO quotes_daily (ticker, date, close, volume, adj_close, source, fetched_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(ticker, date) DO UPDATE SET close = excluded.close, volume = excluded.volume,
-       adj_close = excluded.adj_close, fetched_at = excluded.fetched_at`,
-  );
-  const insDiv = sqlite.prepare(
-    `INSERT OR REPLACE INTO dividends (ticker, ex_date, payment_date, kind, value_per_share, source, fetched_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  );
-  sqlite.transaction(() => {
-    for (const p of history) upQuote.run(ticker, p.date, p.close, p.volume, p.adjClose, BRAPI_SOURCE, now);
-    for (const d of divs) insDiv.run(ticker, d.exDate, d.paymentDate, d.kind, d.value, BRAPI_SOURCE, now);
-  })();
-  mark.run(ticker, now, "ok", `${history.length} pregões (${usedRange}), ${divs.length} proventos`);
-
-  return { ticker, historyPoints: history.length, dividends: divs.length, range: usedRange };
-}
-
-/** Busca o histórico só se a última busca tiver mais de `maxAgeHours`. */
-export async function ensureTickerHistory(sqlite: Database.Database, ticker: string, maxAgeHours = 24) {
-  const row = sqlite
-    .prepare(`SELECT fetched_at AS f, status FROM ticker_fetches WHERE ticker = ? AND kind = 'history'`)
-    .get(ticker.toUpperCase()) as { f: string; status: string } | undefined;
-  const ageH = row ? (Date.now() - Date.parse(row.f)) / 3_600_000 : Infinity;
-  // erros são tentados de novo depois de 1 h, para não gastar a cota
-  if (row && ((row.status === "ok" && ageH < maxAgeHours) || (row.status === "error" && ageH < 1))) return null;
-  return fetchTickerHistory(sqlite, ticker);
+  throw lastErr instanceof Error ? lastErr : new BrapiError("falha ao buscar histórico");
 }

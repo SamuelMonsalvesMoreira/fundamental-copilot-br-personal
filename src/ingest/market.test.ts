@@ -57,6 +57,39 @@ describe("brapi", () => {
     });
     expect(d).toEqual([{ exDate: "2026-08-24", paymentDate: "2026-12-21", kind: "JCP", value: 0.2025 }]);
   });
+
+  it("dois pagamentos iguais na mesma data são somados, não descartados", () => {
+    const pay = { rate: 0.3505, label: "JCP", exDate: "2026-06-02T03:00:00.000Z" };
+    const d = parseDividends({ symbol: "PETR4", dividendsData: { cashDividends: [pay, pay] } });
+    expect(d).toHaveLength(1);
+    expect(d[0].value).toBeCloseTo(0.701);
+  });
+});
+
+describe("Yahoo Finance", () => {
+  it("lê preços e proventos com a data do pregão em São Paulo", async () => {
+    const { parseYahooChart } = await import("./yahoo");
+    const r = parseYahooChart({
+      chart: {
+        result: [
+          {
+            meta: { gmtoffset: -10800 },
+            timestamp: [1793970000, 1794056400],
+            indicators: { quote: [{ close: [45.36, null], volume: [10, null] }], adjclose: [{ adjclose: [44.1, null] }] },
+            events: { dividends: { a: { amount: 0.7481, date: 1793970000 }, b: { amount: 0, date: 1793970000 } } },
+          },
+        ],
+        error: null,
+      },
+    });
+    expect(r.history).toEqual([{ date: "2026-11-06", close: 45.36, adjClose: 44.1, volume: 10 }]);
+    expect(r.dividends).toEqual([{ exDate: "2026-11-06", paymentDate: null, kind: "PROVENTO", value: 0.7481 }]);
+  });
+
+  it("ticker inexistente vira erro claro", async () => {
+    const { parseYahooChart } = await import("./yahoo");
+    expect(() => parseYahooChart({ chart: { result: null, error: { description: "No data found" } } })).toThrow("No data found");
+  });
 });
 
 describe("escala da quantidade de ações", () => {

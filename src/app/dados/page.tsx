@@ -68,16 +68,6 @@ async function DataStatus() {
           indicadores por ação.
         </p>
       )}
-      {!market.tokenConfigured && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
-          <p className="font-medium">Token da brapi não configurado</p>
-          <p className="mt-1 text-muted-foreground">
-            As cotações do dia funcionam sem token, mas o histórico de preços e os proventos de cada empresa precisam
-            do token gratuito. Crie em brapi.dev, coloque em <code className="font-mono">BRAPI_TOKEN</code> no arquivo{" "}
-            <code className="font-mono">.env.local</code> e reinicie o app.
-          </p>
-        </div>
-      )}
       {coverage.latestDfp && (
         <p className="text-sm text-muted-foreground">
           Demonstrações da CVM de <span className="num text-foreground">{formatDate(coverage.oldestDfp)}</span> até{" "}

@@ -84,7 +84,6 @@ export interface MarketSummary {
   sharesVerified: number;
   sharesInThousands: number;
   sharesUnverified: number;
-  tokenConfigured: boolean;
 }
 
 export function getMarketSummary(): MarketSummary {
@@ -108,6 +107,5 @@ export function getMarketSummary(): MarketSummary {
     sharesVerified: s.ok ?? 0,
     sharesInThousands: s.thousands ?? 0,
     sharesUnverified: s.bad ?? 0,
-    tokenConfigured: Boolean(process.env.BRAPI_TOKEN?.trim()),
   };
 }

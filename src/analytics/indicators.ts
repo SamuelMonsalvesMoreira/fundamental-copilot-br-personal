@@ -63,6 +63,7 @@ export interface TickerQuote {
   /** só units: quantas ações compõem 1 unit (FCA) */
   sharesPerUnit?: number | null;
   unitComposition?: string | null;
+  source?: string;
 }
 
 export interface DividendRecord {
@@ -70,6 +71,7 @@ export interface DividendRecord {
   exDate: string;
   value: number;
   kind: string;
+  source?: string;
 }
 
 export interface CompanyInput {
@@ -237,12 +239,13 @@ export function analyzeCompany(input: CompanyInput): CompanyAnalysis {
     indicators[ind.key] = { ...ind, value, applicable, missing };
   };
 
+  const priceSource = mainQuote?.source ?? BRAPI;
   const inMcap: IndicatorInput = {
     label: "Valor de mercado",
     value: mcap?.value ?? null,
     format: "currency",
     period: pricePeriod,
-    source: mcap?.method === "brapi" ? BRAPI : `${BRAPI} (preço) + ${CVM} (nº de ações)`,
+    source: mcap?.method === "brapi" ? BRAPI : `${priceSource} (preço) + ${CVM} (nº de ações)`,
   };
   const fin = (label: string, value: number | undefined | null, period = finPeriod): IndicatorInput => ({
     label,
@@ -327,7 +330,7 @@ export function analyzeCompany(input: CompanyInput): CompanyAnalysis {
     indicators,
     sources: {
       financials: ttm ? finSource : null,
-      price: price ? `${BRAPI} — ${pricePeriod}` : null,
+      price: price ? `${priceSource} — ${pricePeriod}` : null,
     },
   };
 }
@@ -347,8 +350,8 @@ function dividendYield(input: CompanyInput, q: TickerQuote | null) {
         value: dps / q.close,
         formula: "Proventos por ação com data ex nos últimos 12 meses ÷ preço",
         inputs: [
-          { label: "Proventos por ação (12m)", value: dps, format: "perShare" as const, period: `data ex de ${fmtDateBr(since)} a ${fmtDateBr(q.date)}`, source: BRAPI },
-          { label: `Preço ${q.ticker}`, value: q.close, format: "perShare" as const, period: `fechamento de ${fmtDateBr(q.date)}`, source: BRAPI },
+          { label: "Proventos por ação (12m)", value: dps, format: "perShare" as const, period: `data ex de ${fmtDateBr(since)} a ${fmtDateBr(q.date)}`, source: own[0]?.source ?? BRAPI },
+          { label: `Preço ${q.ticker}`, value: q.close, format: "perShare" as const, period: `fechamento de ${fmtDateBr(q.date)}`, source: q.source ?? BRAPI },
         ],
         period: `12 meses até ${fmtDateBr(q.date)}`,
         note: undefined as string | undefined,
@@ -368,6 +371,6 @@ function dividendYield(input: CompanyInput, q: TickerQuote | null) {
       { label: "Valor de mercado", value: mcap?.value ?? null, format: "currency" as const, source: BRAPI },
     ],
     period: ttm ? `12 meses até ${fmtDateBr(ttm.end)}` : "—",
-    note: "Estimado pelo fluxo de caixa (sem histórico de proventos por ação). Configure o token da brapi para o cálculo por data ex.",
+    note: "Estimado pelo fluxo de caixa, porque não há histórico de proventos por ação deste ticker.",
   };
 }

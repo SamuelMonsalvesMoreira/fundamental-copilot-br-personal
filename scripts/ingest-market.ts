@@ -3,12 +3,12 @@
  *
  *   npm run ingest:market                 # macro + cotações do dia + escala de ações
  *   npm run ingest:market -- --full-macro # recarrega as séries do BCB desde 2010
- *   npm run ingest:market -- --ticker WEGE3 --ticker PETR4   # histórico e proventos (exige BRAPI_TOKEN)
+ *   npm run ingest:market -- --ticker WEGE3 --ticker PETR4   # histórico e proventos (Yahoo Finance)
  */
 import "./env";
 import { parseArgs } from "node:util";
 import { openDatabase } from "../src/db/open";
-import { fetchTickerHistory } from "../src/ingest/brapi";
+import { fetchTickerHistory } from "../src/ingest/history";
 import { ingestDailyMarket } from "../src/ingest/market";
 
 const { values } = parseArgs({

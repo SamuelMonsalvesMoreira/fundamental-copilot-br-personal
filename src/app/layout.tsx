@@ -29,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <footer className="border-t">
               <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-muted-foreground sm:px-6">
                 Ferramenta de estudo. As informações e análises exibidas não constituem recomendação de
-                investimento. Dados: CVM Dados Abertos, Banco Central do Brasil (SGS) e brapi.dev.
+                investimento. Dados: CVM Dados Abertos, Banco Central do Brasil (SGS), brapi.dev e Yahoo Finance.
               </div>
             </footer>
             <Toaster />

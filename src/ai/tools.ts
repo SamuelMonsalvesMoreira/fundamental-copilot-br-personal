@@ -195,7 +195,7 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
         tipo: p.meta.layout === "bank" ? "banco" : p.meta.layout === "insurance" ? "seguradora" : "empresa não financeira",
         segmento_listagem: p.meta.listingSegment,
         outras_classes: p.classes.map((c) => c.ticker),
-        preco: p.quote ? { valor: p.quote.close, data: p.quote.date, variacao_dia_fracao: r(p.quote.changePct), fonte: "brapi.dev" } : null,
+        preco: p.quote ? { valor: p.quote.close, data: p.quote.date, variacao_dia_fracao: r(p.quote.changePct), fonte: p.quote.source } : null,
         valor_mercado_mi: mi(p.indicators.marketCap?.value),
         acoes_em_circulacao: p.sharesOutstanding,
         observacao_unit: p.unitNote,
@@ -252,7 +252,7 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
       };
       return {
         setor: p.meta.sector,
-        fonte: "Indicadores calculados com dados da CVM e cotações da brapi.dev (último pregão)",
+        fonte: "Indicadores calculados com dados da CVM e cotações de mercado (último pregão)",
         empresas: p.peers.map((x) => ({
           ticker: x.ticker,
           nome: x.name,
@@ -328,7 +328,7 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
       return {
         ticker: p.ticker,
         por_ano: p.dividendsByYear.map((d) => ({ ano: d.year, por_acao: r(d.perShare, 4), total_pago_mi: mi(d.paid) })),
-        fontes: { por_acao: "brapi.dev (data ex)", total_pago: `${CVM} — DFC (valor pago no ano)` },
+        fontes: { por_acao: `${p.historySource ?? "sem fonte"} (data ex)`, total_pago: `${CVM} — DFC (valor pago no ano)` },
         dy_12m_fracao: r(p.indicators.dy?.value),
         dy_metodo: p.indicators.dy?.formula ?? null,
         dy_observacao: p.indicators.dy?.note ?? null,

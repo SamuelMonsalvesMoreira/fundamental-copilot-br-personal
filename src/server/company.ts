@@ -4,7 +4,7 @@ import { buildQuarterly, FinTable, type MetricMap } from "@/analytics/periods";
 import { debtOf, ebitdaOf, type Indicator } from "@/analytics/indicators";
 import { averageAnnualDividends, defaultDcfAssumptions, graham, type DcfDefaults, type ValuationResult } from "@/analytics/valuation";
 import { analyzeByCnpj, findTicker, loadCompanyMeta, loadPeers, type CompanyMeta, type PeerRow } from "@/data/company-data";
-import { ensureTickerHistory, hasBrapiToken } from "@/ingest/brapi";
+import { ensureTickerHistory } from "@/ingest/history";
 import { getMacroSnapshot } from "./macro";
 import { isWatched } from "./portfolio";
 
@@ -38,7 +38,7 @@ export interface CompanyPageData {
   ticker: string;
   meta: CompanyMeta;
   classes: Array<{ ticker: string; shareClass: string; close: number | null; changePct: number | null; date: string | null }>;
-  quote: { close: number; changePct: number | null; date: string; volume: number | null } | null;
+  quote: { close: number; changePct: number | null; date: string; volume: number | null; source: string } | null;
   indicators: Record<string, Indicator>;
   ttm: { end: string; kind: "annual" | "ttm"; composition: string } | null;
   sources: { financials: string | null; price: string | null };
@@ -50,6 +50,8 @@ export interface CompanyPageData {
   annual: SeriesPoint[];
   quarterly: SeriesPoint[];
   priceHistory: Array<{ date: string; close: number }>;
+  /** fonte do histórico de preços e proventos */
+  historySource: string | null;
   dividendsByYear: Array<{ year: number; perShare: number | null; paid: number | null }>;
   valuation: {
     price: number | null;
@@ -62,7 +64,8 @@ export interface CompanyPageData {
   };
   peers: PeerRow[];
   macroDate: string | null;
-  historyStatus: { tokenConfigured: boolean; message: string | null };
+  macro: { selic: number | null; cdi: number | null; ipca12m: number | null };
+  historyStatus: { message: string | null };
   watched: boolean;
 }
 
@@ -190,7 +193,7 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
     return { ticker: t.ticker, shareClass: t.shareClass, close: q?.close ?? null, changePct: q?.changePct ?? null, date: q?.date ?? null };
   });
   const quoteRow = sqlite
-    .prepare(`SELECT close, change_pct AS changePct, date, volume FROM quotes_daily WHERE ticker = ? ORDER BY date DESC LIMIT 1`)
+    .prepare(`SELECT close, change_pct AS changePct, date, volume, source FROM quotes_daily WHERE ticker = ? ORDER BY date DESC LIMIT 1`)
     .get(ref.ticker) as CompanyPageData["quote"] | undefined;
 
   // proventos por ano: por ação (brapi, ticker atual) e pagos no total (DFC)
@@ -213,7 +216,8 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
   const price = quoteRow?.close ?? null;
   const dpsAvg = averageAnnualDividends(a.input.dividends, ref.ticker, quoteRow?.date ?? new Date().toISOString().slice(0, 10));
   // sem proventos por ação: média de dividendos pagos (DFC) ÷ ações
-  let bazinSource = "brapi.dev — proventos por data ex, média dos últimos 3 anos";
+  const historySource = divsTicker[0]?.source ?? null;
+  let bazinSource = `${historySource ?? "Fonte de mercado"} — proventos por data ex, média dos últimos 3 anos`;
   let averageDps = dpsAvg?.average ?? null;
   let perYear = dpsAvg?.perYear ?? [];
   if (averageDps === null && a.sharesOutstanding) {
@@ -244,6 +248,7 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
     annual,
     quarterly,
     priceHistory: loadPriceHistory(ref.ticker),
+    historySource,
     dividendsByYear,
     valuation: {
       price,
@@ -264,7 +269,8 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
     },
     peers: loadPeers(sqlite, ref.cnpj, 10),
     macroDate: macro[0]?.date ?? null,
-    historyStatus: { tokenConfigured: hasBrapiToken(), message: historyMessage },
+    macro: { selic, cdi: macro.find((m) => m.key === "cdi")?.value ?? null, ipca12m: ipca },
+    historyStatus: { message: historyMessage },
     watched: isWatched(ref.ticker),
   };
 }

@@ -120,7 +120,7 @@ export function ProjectionsPanel({ ctx }: { ctx: ProjectionContext }) {
         <FlaskConicalIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
         <p>
           <span className="font-medium">Projeção sua, não é dado oficial.</span> O ponto de partida é real ({ctx.baseLabel ?? "sem resultados"}, CVM;
-          preço brapi.dev), mas todos os valores futuros dependem das premissas abaixo. Não é previsão nem recomendação de investimento.
+          preço de mercado), mas todos os valores futuros dependem das premissas abaixo. Não é previsão nem recomendação de investimento.
         </p>
       </div>
 

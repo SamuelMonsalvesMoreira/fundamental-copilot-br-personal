@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { sqlite } from "@/db/client";
 import { validatePosition } from "@/analytics/portfolio";
-import { ensureTickerHistory, hasBrapiToken } from "@/ingest/brapi";
+import { ensureTickerHistory } from "@/ingest/history";
 import { tickerExists } from "./portfolio";
 
 const clean = (t: unknown) => String(t ?? "").trim().toUpperCase();
@@ -15,8 +15,8 @@ export async function toggleWatchlist(ticker: string): Promise<{ watched: boolea
   if (exists) sqlite.prepare(`DELETE FROM watchlist WHERE ticker = ?`).run(t);
   else {
     sqlite.prepare(`INSERT INTO watchlist (ticker, added_at) VALUES (?, ?)`).run(t, new Date().toISOString());
-    // já busca histórico/proventos para a watchlist (se houver token)
-    if (hasBrapiToken()) await ensureTickerHistory(sqlite, t).catch(() => null);
+    // já busca histórico e proventos para a watchlist
+    await ensureTickerHistory(sqlite, t).catch(() => null);
   }
   refresh();
   return { watched: !exists };

@@ -119,7 +119,7 @@ export function loadCompanyInput(sqlite: Database.Database, cnpj: string, prefer
   const quotes = sqlite
     .prepare(
       `SELECT t.ticker, t.share_class AS shareClass, t.shares_per_unit AS sharesPerUnit, t.unit_composition AS unitComposition,
-              q.close, q.date, q.market_cap AS marketCap, q.volume
+              q.close, q.date, q.market_cap AS marketCap, q.volume, q.source
          FROM tickers t
          JOIN quotes_daily q ON q.ticker = t.ticker
         WHERE t.cnpj = ? AND q.date = (SELECT MAX(date) FROM quotes_daily WHERE ticker = t.ticker)`,
@@ -128,7 +128,7 @@ export function loadCompanyInput(sqlite: Database.Database, cnpj: string, prefer
 
   const dividends = sqlite
     .prepare(
-      `SELECT d.ticker, d.ex_date AS exDate, d.value_per_share AS value, d.kind
+      `SELECT d.ticker, d.ex_date AS exDate, d.value_per_share AS value, d.kind, d.source
          FROM dividends d JOIN tickers t USING (ticker) WHERE t.cnpj = ?`,
     )
     .all(cnpj) as DividendRecord[];

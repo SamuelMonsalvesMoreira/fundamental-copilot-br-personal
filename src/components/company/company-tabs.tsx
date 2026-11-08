@@ -24,7 +24,7 @@ export function CompanyTabs({ tabs }: { tabs: TabDef[] }) {
         history.replaceState(null, "", `#${v}`);
       }}
     >
-      <div className="-mx-4 overflow-x-auto overflow-y-hidden border-b px-4 pb-px [scrollbar-width:none] sm:mx-0 sm:px-0">
+      <div className="-mx-4 overflow-x-auto overflow-y-hidden border-b px-4 pb-px [scrollbar-width:none] sm:mx-0 sm:px-0 print:hidden">
         <TabsList variant="line" className="h-10">
           {tabs.map((t) => (
             <TabsTrigger key={t.value} value={t.value} className="px-3">
@@ -34,7 +34,7 @@ export function CompanyTabs({ tabs }: { tabs: TabDef[] }) {
         </TabsList>
       </div>
       {tabs.map((t) => (
-        <TabsContent key={t.value} value={t.value} className="pt-5">
+        <TabsContent key={t.value} value={t.value} className="pt-5 data-[ending-style]:hidden">
           {t.content}
         </TabsContent>
       ))}

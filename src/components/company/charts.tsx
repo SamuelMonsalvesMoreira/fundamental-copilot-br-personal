@@ -194,7 +194,7 @@ function DividendsChart({ data }: { data: CompanyPageData }) {
   const paid = rows.some((r) => r.paid !== null);
   if (!perShare && !paid) {
     return (
-      <ChartCard title="Dividendos" source="Fontes: brapi.dev (por ação) · CVM (pagos, DFC)">
+      <ChartCard title="Dividendos" source="Fontes: mercado (por ação) · CVM (pagos, DFC)">
         <EmptyState title="Sem dados de dividendos" description="Nem proventos por ação (brapi) nem dividendos pagos na DFC estão disponíveis." className="h-full" />
       </ChartCard>
     );
@@ -203,7 +203,7 @@ function DividendsChart({ data }: { data: CompanyPageData }) {
     <ChartCard
       title="Dividendos"
       subtitle={perShare ? `Proventos por ação de ${data.ticker} por ano (data ex), R$` : "Dividendos e JCP pagos no ano (DFC), R$"}
-      source={perShare ? "Fonte: brapi.dev — proventos em dinheiro por data ex" : "Fonte: CVM — DFC (valor pago no ano, pode se referir a lucros anteriores). Configure o token da brapi para ver por ação."}
+      source={perShare ? `Fonte: ${data.historySource ?? "mercado"} — proventos em dinheiro por data ex` : "Fonte: CVM — DFC (valor pago no ano, pode se referir a lucros anteriores)."}
     >
       <ResponsiveContainer>
         <ComposedChart data={rows} margin={{ left: 4, right: 4, top: 4 }}>
@@ -222,14 +222,10 @@ function PriceChart({ data }: { data: CompanyPageData }) {
   const h = data.priceHistory;
   if (h.length < 30) {
     return (
-      <ChartCard title={`Cotação ${data.ticker}`} source="Fonte: brapi.dev">
+      <ChartCard title={`Cotação ${data.ticker}`} source="Fonte: Yahoo Finance">
         <EmptyState
           title="Histórico de preços indisponível"
-          description={
-            data.historyStatus.tokenConfigured
-              ? "A brapi não retornou o histórico deste ticker."
-              : "O histórico por ticker precisa do token gratuito da brapi (BRAPI_TOKEN no .env.local)."
-          }
+          description="A fonte de cotações não retornou o histórico deste ticker."
           className="h-full"
         />
       </ChartCard>
@@ -242,7 +238,7 @@ function PriceChart({ data }: { data: CompanyPageData }) {
     <ChartCard
       title={`Cotação ${data.ticker}`}
       subtitle={`Fechamento semanal, ${formatDate(first.date)} a ${formatDate(last.date)} (não ajustado por proventos)`}
-      source="Fonte: brapi.dev"
+      source="Fonte: Yahoo Finance"
     >
       <ResponsiveContainer>
         <AreaChart data={h} margin={{ left: 4, right: 4, top: 4 }}>

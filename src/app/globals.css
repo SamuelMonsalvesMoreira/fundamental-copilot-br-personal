@@ -129,6 +129,33 @@
   --sidebar-ring: oklch(0.6 0.1 240);
 }
 
+/* PDF sempre claro, mesmo com o app no modo escuro */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  :root,
+  .dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.2 0.015 255);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.2 0.015 255);
+    --muted: oklch(0.955 0.004 250);
+    --muted-foreground: oklch(0.45 0.015 255);
+    --border: oklch(0.88 0.006 250);
+    --primary: oklch(0.48 0.12 245);
+    --positive: oklch(0.5 0.14 155);
+    --negative: oklch(0.52 0.19 25);
+    --warning: oklch(0.6 0.15 70);
+    --chart-1: oklch(0.52 0.13 245);
+    --chart-2: oklch(0.62 0.13 175);
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

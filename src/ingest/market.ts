@@ -4,7 +4,8 @@
  */
 import type Database from "better-sqlite3";
 import { ingestMacro } from "./bcb";
-import { ensureTickerHistory, hasBrapiToken, ingestQuoteList } from "./brapi";
+import { ingestQuoteList } from "./brapi";
+import { refreshHistories } from "./history";
 import { resolveShareScales } from "./share-scale";
 import { refreshSnapshots } from "./snapshots";
 
@@ -28,17 +29,9 @@ export async function ingestDailyMarket(sqlite: Database.Database, opts: { log?:
     log(`Escala de ações: ${s.resolved} conferidas (${s.thousands} em milhares), ${s.unresolved} sem conferência.`);
   });
 
-  if (hasBrapiToken()) {
-    const watch = sqlite.prepare(`SELECT ticker FROM watchlist`).all() as { ticker: string }[];
-    for (const { ticker } of watch) {
-      await step(`Histórico ${ticker}`, async () => {
-        const r = await ensureTickerHistory(sqlite, ticker, 20);
-        if (r) log(`${ticker}: ${r.historyPoints} pregões, ${r.dividends} proventos.`);
-      });
-    }
-  } else {
-    log("BRAPI_TOKEN não configurado: histórico e proventos por ticker não serão atualizados.");
-  }
+  // Preços e proventos: cada ticker é atualizado no máximo uma vez por semana.
+  await step("Histórico", () => refreshHistories(sqlite, { log }));
+
   await step("Indicadores", async () => {
     const r = refreshSnapshots(sqlite);
     log(`Indicadores recalculados para ${r.count} companhias.`);

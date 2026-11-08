@@ -2,7 +2,7 @@
 
 Análise fundamentalista de ações brasileiras a partir de dados oficiais e atuais:
 demonstrações financeiras da **CVM** (DFP e ITR), Selic, CDI e IPCA do **Banco Central** e
-cotações e proventos da **brapi.dev**, com um copiloto de IA (Claude) que responde citando os
+cotações e proventos da **brapi.dev** e do **Yahoo Finance**, com um copiloto de IA (Claude) que responde citando os
 números do banco local.
 
 > Ferramenta de estudo para uso pessoal. Nada aqui é recomendação de investimento.
@@ -56,14 +56,15 @@ se quiser só o app.
 
 | Variável | Obrigatória? | Para quê | Onde obter |
 |---|---|---|---|
-| `BRAPI_TOKEN` | Recomendada | Histórico de cotações e proventos por empresa (plano gratuito) | https://brapi.dev/dashboard |
+| `BRAPI_TOKEN` | Não | Reserva caso o Yahoo Finance falhe (plano gratuito) | https://brapi.dev/dashboard |
 | `ANTHROPIC_API_KEY` | Só para a IA | Abas Copiloto e Relatório (uso pago por consumo) | https://console.anthropic.com/ |
 | `CLAUDE_CHAT_MODEL` | Não | Modelo do chat (padrão `claude-sonnet-5-5`) | |
 | `CLAUDE_REPORT_MODEL` | Não | Modelo do relatório (padrão `claude-opus-5-5`) | |
 | `DATABASE_PATH` | Não | Caminho do SQLite (padrão `data/app.db`) | |
 
-Sem nenhuma chave, o app já funciona com balanços, indicadores, cotações do dia, screener,
-comparador, carteira e projeções.
+Sem nenhuma chave, o app funciona por inteiro, exceto o chat com IA e o relatório com IA:
+balanços, indicadores, histórico de preços, proventos, screener, comparador, carteira, projeções
+e relatório automático em PDF.
 
 As chaves ficam só no servidor e nunca devem ir para o Git (`.env.local` está no `.gitignore`).
 O app não tem login: rode apenas no seu computador e não o exponha na internet, porque qualquer
@@ -86,8 +87,9 @@ pessoa com acesso poderia consumir a sua chave da API.
 ## Cotações e macro
 
 - **brapi.dev**: a lista diária de todas as ações (preço, variação, volume, valor de mercado,
-  subsetor) funciona **sem token**. Histórico e proventos por empresa precisam do token
-  gratuito (15 mil requisições/mês). O token vai no cabeçalho da requisição, nunca na URL.
+  subsetor) funciona **sem token**.
+- **Yahoo Finance**: histórico de 10 anos e proventos por ticker, sem token. Se falhar e houver
+  `BRAPI_TOKEN`, a brapi é usada como reserva.
 - **Banco Central (SGS)**: Selic meta (432), CDI (12, anualizado com 252 dias úteis),
   IPCA mensal (433) e IPCA 12 meses (13522), desde 2010.
 - **Quantidade de ações**: a CVM não informa a escala da composição do capital e muitas
@@ -146,6 +148,14 @@ publicados por WEG, Petrobras e Itaú em 2025, explicando as diferenças de meto
 **Units** (TAEE11, KLBN11, SANB11...): o preço é de um pacote de ações, então LPA, VPA, valuation e
 projeções saem **por unit**, usando a composição informada no FCA da CVM.
 
+## Relatório automático (sem IA)
+
+A aba **Relatório** gera, sem custo, um relatório por regras fixas: resumo, placar por tema
+(rentabilidade, dívida, crescimento, dividendos e preço frente aos pares), pontos positivos e de
+atenção com os números, tendências e modelos de valuation. Você pode informar o **lucro estimado**
+e o payout: o relatório calcula LPA, P/L projetado, dividendo por ação e rendimento na hora.
+O botão **Exportar PDF** abre a impressão do navegador; escolha "Salvar como PDF".
+
 ## Projeções
 
 Aba **Projeções** na página da empresa e página `/projecoes` com todas as salvas. São estimativas
@@ -184,7 +194,10 @@ Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de
 ## Limitações conhecidas
 
 - **Capex e dividendos pagos** vêm de linhas de texto livre do fluxo de caixa, então são estimativas.
-- **Dividend yield sem token da brapi** é estimado pelos dividendos pagos no fluxo de caixa e pode
+- **Yahoo Finance não é uma API oficial:** pode mudar sem aviso, e seus termos restringem uso
+  automatizado. O app faz poucas chamadas (cada ticker no máximo uma vez por semana, ou uma vez por
+  dia ao abrir a empresa) e é para uso pessoal.
+- **Dividend yield de empresas sem histórico de proventos** é estimado pelo fluxo de caixa e pode
   distorcer quando pagamentos de anos diferentes caem no mesmo período.
 - **EBITDA e lucro são contábeis**, sem os ajustes que as empresas costumam divulgar.
 - **Quantidade de ações:** as companhias em que a escala não pode ser conferida ficam sem indicadores
@@ -199,7 +212,7 @@ Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de
 | "no such column" depois de atualizar o projeto | Rode `npm run db:migrate` e reinicie o app |
 | Página inicial pede para baixar dados | Rode `npm run setup` |
 | Copiloto aparece desativado | Preencha `ANTHROPIC_API_KEY` no `.env.local` e reinicie o app |
-| Gráfico de cotação sem dados | Preencha `BRAPI_TOKEN` no `.env.local` e reinicie o app |
+| Gráfico de cotação sem dados | Rode `npm run ingest:market -- --ticker WEGE3` e veja o erro |
 | Erro de instalação com caminho longo no Windows | Mova o projeto para uma pasta curta |
 | Quer forçar a atualização dos balanços | `npm run ingest:cvm -- --force` |
 
@@ -227,7 +240,7 @@ scripts/       comandos de linha (migração, coleta, agendador)
 | `npm run ingest:cvm` | baixa cadastro, tickers e DFP/ITR da CVM (~11 anos; só rebaixa o que mudou) |
 | `npm run ingest:cvm -- --from 2024 --force` | recoleta a partir de um ano, mesmo sem mudanças |
 | `npm run ingest:market` | Selic/CDI/IPCA (Banco Central) + cotações do dia (brapi) + conferência da quantidade de ações |
-| `npm run ingest:market -- --ticker WEGE3` | histórico de 10 anos e proventos de um ticker (exige `BRAPI_TOKEN`) |
+| `npm run ingest:market -- --ticker WEGE3` | histórico de 10 anos e proventos de um ticker (Yahoo Finance) |
 | `npm run worker` | agendador: mercado nos dias úteis às 19h30, CVM todo dia às 7h; recupera atrasos ao iniciar |
 | `npm run dev:all` | app + agendador juntos |
 | `npm run show -- WEGE3` | mostra os indicadores de um ticker no terminal |

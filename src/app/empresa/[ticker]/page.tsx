@@ -8,11 +8,11 @@ import { CompanyTabs } from "@/components/company/company-tabs";
 import { IndicatorGrid } from "@/components/company/indicator-grid";
 import { PeersTable } from "@/components/company/peers-table";
 import { ProjectionsPanel } from "@/components/company/projections-panel";
+import { ReportTab } from "@/components/company/report-tab";
 import { Statements } from "@/components/company/statements";
 import { ValuationPanel } from "@/components/company/valuation-panel";
 import { CompanyPageSkeleton } from "@/components/company/skeleton";
 import { CopilotChat } from "@/components/copilot/chat";
-import { ReportPanel } from "@/components/copilot/report-panel";
 import { hasApiKey, REPORT_MODEL } from "@/ai/agent";
 import { buildProjectionContext } from "@/server/projections";
 import { getLatestReport } from "@/server/reports";
@@ -39,6 +39,7 @@ async function Company({ params }: { params: PageProps<"/empresa/[ticker]">["par
   if (!data) notFound();
   const statements = getStatements(data.ticker);
   const aiEnabled = hasApiKey();
+  const projection = buildProjectionContext(data);
   const isFinancial = data.meta.layout === "bank" || data.meta.layout === "insurance";
 
   return (
@@ -51,10 +52,10 @@ async function Company({ params }: { params: PageProps<"/empresa/[ticker]">["par
           { value: "graficos", label: "Gráficos", content: <CompanyCharts data={data} /> },
           { value: "demonstracoes", label: "Demonstrações", content: <Statements tables={statements} cvmCode={data.meta.cvmCode} /> },
           { value: "valuation", label: "Valuation", content: <ValuationPanel v={data.valuation} ticker={data.ticker} /> },
-          { value: "projecoes", label: "Projeções", content: <ProjectionsPanel ctx={buildProjectionContext(data)} /> },
+          { value: "projecoes", label: "Projeções", content: <ProjectionsPanel ctx={projection} /> },
           { value: "pares", label: "Pares", content: <PeersTable peers={data.peers} current={data.ticker} sector={data.meta.sector} /> },
           { value: "copiloto", label: "Copiloto", content: <CopilotChat ticker={data.ticker} enabled={aiEnabled} isFinancial={isFinancial} /> },
-          { value: "relatorio", label: "Relatório", content: <ReportPanel ticker={data.ticker} report={getLatestReport(data.ticker)} enabled={aiEnabled} model={REPORT_MODEL()} /> },
+          { value: "relatorio", label: "Relatório", content: <ReportTab data={data} ctx={projection} aiEnabled={aiEnabled} aiReport={getLatestReport(data.ticker)} aiModel={REPORT_MODEL()} /> },
         ]}
       />
     </div>
@@ -71,12 +72,6 @@ function Overview({ data }: { data: CompanyPageData }) {
         <IndicatorGrid indicators={data.indicators} />
       )}
 
-      {!data.historyStatus.tokenConfigured && (
-        <p className="text-xs text-muted-foreground">
-          Dividend yield calculado pelo fluxo de caixa. Com o token gratuito da brapi (BRAPI_TOKEN), passa a usar os proventos
-          por ação e mostra o histórico de cotações.
-        </p>
-      )}
       <p className="text-xs text-muted-foreground">Toque em um indicador para ver a fórmula, os números usados, o período e a fonte.</p>
     </div>
   );
@@ -94,7 +89,7 @@ function DataSources({ data }: { data: CompanyPageData }) {
       </span>
       <span>
         <span className="font-medium text-foreground">Preço: </span>
-        {data.quote ? `${data.ticker}, fechamento de ${formatDate(data.quote.date)} · brapi.dev` : "sem cotação"}
+        {data.quote ? `${data.ticker}, fechamento de ${formatDate(data.quote.date)} · ${data.quote.source}` : "sem cotação"}
       </span>
       {data.marketCapNote && (
         <span>
