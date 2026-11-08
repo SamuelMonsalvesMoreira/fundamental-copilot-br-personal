@@ -129,11 +129,15 @@ export async function ingestQuoteList(sqlite: Database.Database, opts: { log?: (
          subsector = excluded.subsector, sub_type = excluded.sub_type, logo = excluded.logo,
          source = excluded.source, updated_at = excluded.updated_at`,
     );
-    // Não sobrescreve um fechamento ajustado já vindo do histórico.
+    // Se o candle diário (histórico) já existe para o pregão, o fechamento dele
+    // prevalece: a lista pode trazer o último preço negociado, que às vezes
+    // difere centavos do fechamento oficial.
     const upQuote = sqlite.prepare(
       `INSERT INTO quotes_daily (ticker, date, close, volume, market_cap, change_pct, source, fetched_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(ticker, date) DO UPDATE SET close = excluded.close, volume = excluded.volume,
+       ON CONFLICT(ticker, date) DO UPDATE SET
+         close = CASE WHEN quotes_daily.adj_close IS NULL THEN excluded.close ELSE quotes_daily.close END,
+         volume = COALESCE(quotes_daily.volume, excluded.volume),
          market_cap = excluded.market_cap, change_pct = excluded.change_pct, fetched_at = excluded.fetched_at`,
     );
 

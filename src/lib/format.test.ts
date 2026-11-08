@@ -45,3 +45,15 @@ describe("format", () => {
     expect(formatDateTime("2026-11-07T21:30:00Z")).toBe("07/11/2026 18:30");
   });
 });
+
+describe("formatByType", () => {
+  it("formata conforme o tipo do indicador", async () => {
+    const { formatByType, formatCompactNumber } = await import("./format");
+    expect(formatByType(8.234, "multiple")).toBe("8,23x");
+    expect(formatByType(0.153, "percent")).toBe("15,3%");
+    expect(formatByType(2.02e11, "currency")).toBe("R$ 202,00 bi");
+    expect(formatByType(1.49, "perShare")).toBe("R$ 1,49");
+    expect(formatCompactNumber(4_195_829_691)).toBe("4,20 bi");
+    expect(formatByType(null, "percent")).toBe("—");
+  });
+});

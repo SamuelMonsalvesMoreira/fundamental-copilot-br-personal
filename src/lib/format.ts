@@ -89,3 +89,37 @@ export function formatDateTime(iso: string | null | undefined): string {
     .format(d)
     .replace(",", "");
 }
+
+/** Quantidades grandes sem moeda: 4.2e9 → "4,20 bi" */
+export function formatCompactNumber(v: Num, digits = 2): string {
+  if (!isValid(v)) return MISSING;
+  const abs = Math.abs(v);
+  const sign = v < 0 ? "-" : "";
+  for (const [size, label] of [
+    [1e12, "tri"],
+    [1e9, "bi"],
+    [1e6, "mi"],
+    [1e3, "mil"],
+  ] as const) {
+    if (abs >= size) return `${sign}${fmt(digits).format(abs / size)} ${label}`;
+  }
+  return `${sign}${fmt(0).format(abs)}`;
+}
+
+export type ValueFormat = "multiple" | "percent" | "currency" | "perShare" | "number";
+
+/** Formata um valor conforme o tipo do indicador. */
+export function formatByType(v: Num, format: ValueFormat): string {
+  switch (format) {
+    case "multiple":
+      return formatMultiple(v, 2);
+    case "percent":
+      return formatPercent(v, 1);
+    case "currency":
+      return formatCompactCurrency(v);
+    case "perShare":
+      return formatCurrency(v);
+    case "number":
+      return formatCompactNumber(v);
+  }
+}
