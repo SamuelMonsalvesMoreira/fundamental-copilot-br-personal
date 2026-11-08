@@ -11,22 +11,39 @@ export interface JobStatus {
   rows: number | null;
   dataAsOf: string | null;
   message: string | null;
+  /** Última vez que a fonte foi verificada (inclui verificações sem mudanças). */
+  checkedAt: string | null;
 }
 
-/** Última execução de cada coleta. */
+/**
+ * Por coleta: a última execução que efetivamente gravou dados (ou falhou),
+ * mais a hora da verificação mais recente.
+ */
 export function getLatestJobRuns(): JobStatus[] {
   return sqlite
     .prepare(
       `SELECT job, source, source_url AS sourceUrl, status, started_at AS startedAt,
-              finished_at AS finishedAt, rows, data_as_of AS dataAsOf, message
+              finished_at AS finishedAt, rows, data_as_of AS dataAsOf, message,
+              (SELECT MAX(COALESCE(finished_at, started_at)) FROM ingest_runs x WHERE x.job = r.job) AS checkedAt
          FROM ingest_runs r
-        WHERE id = (SELECT MAX(id) FROM ingest_runs WHERE job = r.job)
-        ORDER BY job`,
+        WHERE id = COALESCE(
+          (SELECT MAX(id) FROM ingest_runs WHERE job = r.job AND status <> 'skipped'),
+          (SELECT MAX(id) FROM ingest_runs WHERE job = r.job))
+        ORDER BY CASE WHEN job LIKE 'cvm:cadastro' THEN 0 ELSE 1 END, job DESC`,
     )
     .all() as JobStatus[];
 }
 
-const COUNTED_TABLES = ["companies", "tickers", "quotes_daily", "dividends", "macro_series"] as const;
+const COUNTED_TABLES = [
+  "companies",
+  "tickers",
+  "filings",
+  "fin_values",
+  "statement_lines",
+  "quotes_daily",
+  "dividends",
+  "macro_series",
+] as const;
 
 /** Quantidade de linhas por tabela principal. */
 export function getTableCounts(): Record<(typeof COUNTED_TABLES)[number], number> {
@@ -39,4 +56,24 @@ export function getTableCounts(): Record<(typeof COUNTED_TABLES)[number], number
 
 export function getSchemaVersion(): number {
   return sqlite.pragma("user_version", { simple: true }) as number;
+}
+
+export interface CoverageSummary {
+  latestDfp: string | null;
+  latestItr: string | null;
+  oldestDfp: string | null;
+  companiesWithFinancials: number;
+}
+
+/** Período mais recente/antigo disponível e quantas empresas têm demonstrações. */
+export function getCoverageSummary(): CoverageSummary {
+  return sqlite
+    .prepare(
+      `SELECT
+         (SELECT MAX(period_end) FROM filings WHERE doc = 'DFP') AS latestDfp,
+         (SELECT MAX(period_end) FROM filings WHERE doc = 'ITR') AS latestItr,
+         (SELECT MIN(period_end) FROM filings WHERE doc = 'DFP') AS oldestDfp,
+         (SELECT COUNT(DISTINCT cnpj) FROM fin_values) AS companiesWithFinancials`,
+    )
+    .get() as CoverageSummary;
 }

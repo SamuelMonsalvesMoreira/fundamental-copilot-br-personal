@@ -38,6 +38,20 @@ Abra http://localhost:3000.
 
 As chaves ficam só no servidor e nunca devem ir para o Git (`.env.local` está no `.gitignore`).
 
+## Dados da CVM
+
+- **Tickers**: vêm do FCA (formulário cadastral), que liga cada CNPJ aos seus códigos de
+  negociação. Não há lista de empresas mantida à mão.
+- **Demonstrações**: DFP (anual) e ITR (trimestral), sempre a versão mais recente de cada
+  documento e o consolidado quando existir. Valores em R$.
+- **Contas padronizadas** (`fin_values`): receita, EBIT, lucro, depreciação, caixa, dívida,
+  patrimônio, fluxo de caixa etc. Como os códigos das contas mudam entre indústria, banco e
+  seguradora, as contas são localizadas pela descrição das contas fixas da CVM. Cada valor
+  guarda a conta de origem (`origin`). Capex e dividendos pagos vêm de linhas de texto livre
+  da DFC e são marcados como `regra:` na origem.
+- **Linhas completas** (`statement_lines`): DFP de todos os anos e ITR dos 2 anos mais
+  recentes (para a aba "Demonstrações").
+
 ## Estrutura
 
 ```
@@ -58,5 +72,7 @@ scripts/       comandos de linha (migração, coleta, agendador)
 |---|---|
 | `npm run dev` | servidor de desenvolvimento |
 | `npm run db:migrate` | cria/atualiza o banco local |
+| `npm run ingest:cvm` | baixa cadastro, tickers e DFP/ITR da CVM (~11 anos; só rebaixa o que mudou) |
+| `npm run ingest:cvm -- --from 2024 --force` | recoleta a partir de um ano, mesmo sem mudanças |
 | `npm test` | testes |
 | `npm run validate` | lint + tipos + testes + build (o mesmo que a CI) |

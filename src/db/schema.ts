@@ -4,7 +4,6 @@
  * Regra do projeto: todo dado guardado aqui carrega a FONTE e a DATA de
  * referência, para que a interface e a IA possam sempre citá-las.
  *
- * As tabelas de demonstrações financeiras (DFP/ITR) entram na Etapa 1.
  */
 import { sqliteTable, text, real, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
 
@@ -16,6 +15,8 @@ export const companies = sqliteTable("companies", {
   tradeName: text("trade_name"), // nome de pregão / comercial
   sector: text("sector"), // setor de atividade (CVM)
   status: text("status"), // situação do registro
+  layout: text("layout"), // standard | bank | insurance (formato das demonstrações)
+  listingSegment: text("listing_segment"),
   source: text("source").notNull(),
   updatedAt: text("updated_at").notNull(), // ISO
 });
@@ -125,4 +126,69 @@ export const aiReports = sqliteTable(
     toolTrace: text("tool_trace"), // JSON com as chamadas de ferramentas usadas
   },
   (t) => [index("ai_reports_ticker_idx").on(t.ticker, t.createdAt)],
+);
+
+/** Documentos DFP/ITR entregues à CVM. */
+export const filings = sqliteTable(
+  "filings",
+  {
+    cnpj: text("cnpj").notNull(),
+    doc: text("doc").notNull(), // DFP | ITR
+    periodEnd: text("period_end").notNull(),
+    version: integer("version").notNull(),
+    receivedAt: text("received_at"),
+    link: text("link"),
+  },
+  (t) => [primaryKey({ columns: [t.cnpj, t.doc, t.periodEnd] })],
+);
+
+/** Linhas das demonstrações como publicadas na CVM (valores em R$). */
+export const statementLines = sqliteTable(
+  "statement_lines",
+  {
+    cnpj: text("cnpj").notNull(),
+    doc: text("doc").notNull(),
+    statement: text("statement").notNull(), // BPA | BPP | DRE | DFC_MD | DFC_MI | DVA
+    consolidated: integer("consolidated", { mode: "boolean" }).notNull(),
+    periodStart: text("period_start").notNull(), // '' para balanço
+    periodEnd: text("period_end").notNull(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    value: real("value"),
+    fixed: integer("fixed", { mode: "boolean" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.cnpj, t.doc, t.statement, t.periodStart, t.periodEnd, t.code] })],
+);
+
+/** Contas padronizadas extraídas das demonstrações (ver src/ingest/cvm/standardize.ts). */
+export const finValues = sqliteTable(
+  "fin_values",
+  {
+    cnpj: text("cnpj").notNull(),
+    metric: text("metric").notNull(),
+    periodStart: text("period_start").notNull(), // '' para saldos de balanço
+    periodEnd: text("period_end").notNull(),
+    value: real("value").notNull(),
+    doc: text("doc").notNull(),
+    consolidated: integer("consolidated", { mode: "boolean" }).notNull(),
+    origin: text("origin").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.cnpj, t.metric, t.periodStart, t.periodEnd] })],
+);
+
+/** Quantidade de ações (composição do capital, DFP/ITR). */
+export const shareCounts = sqliteTable(
+  "share_counts",
+  {
+    cnpj: text("cnpj").notNull(),
+    periodEnd: text("period_end").notNull(),
+    doc: text("doc").notNull(),
+    ordinary: real("ordinary"),
+    preferred: real("preferred"),
+    total: real("total"),
+    treasuryOrdinary: real("treasury_ordinary"),
+    treasuryPreferred: real("treasury_preferred"),
+    treasuryTotal: real("treasury_total"),
+  },
+  (t) => [primaryKey({ columns: [t.cnpj, t.periodEnd] })],
 );

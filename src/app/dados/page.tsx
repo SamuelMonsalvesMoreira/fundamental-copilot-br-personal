@@ -8,13 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
-import { getLatestJobRuns, getSchemaVersion, getTableCounts } from "@/server/data-status";
+import { getCoverageSummary, getLatestJobRuns, getSchemaVersion, getTableCounts } from "@/server/data-status";
 
 export const metadata: Metadata = { title: "Dados e fontes" };
 
 const TABLE_LABELS: Record<string, string> = {
   companies: "Companhias",
   tickers: "Tickers",
+  filings: "Documentos DFP/ITR",
+  fin_values: "Valores padronizados",
+  statement_lines: "Linhas de demonstrações",
   quotes_daily: "Cotações diárias",
   dividends: "Proventos",
   macro_series: "Pontos macro",
@@ -39,10 +42,19 @@ async function DataStatus() {
   const runs = getLatestJobRuns();
   const counts = getTableCounts();
   const schemaVersion = getSchemaVersion();
+  const coverage = getCoverageSummary();
 
   return (
     <div className="grid gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {coverage.latestDfp && (
+        <p className="text-sm text-muted-foreground">
+          Demonstrações da CVM de <span className="num text-foreground">{formatDate(coverage.oldestDfp)}</span> até{" "}
+          <span className="num text-foreground">{formatDate(coverage.latestItr ?? coverage.latestDfp)}</span> (último
+          balanço anual: <span className="num text-foreground">{formatDate(coverage.latestDfp)}</span>) para{" "}
+          <span className="num text-foreground">{formatNumber(coverage.companiesWithFinancials, 0)}</span> companhias.
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Object.entries(counts).map(([table, n]) => (
           <Card key={table} size="sm">
             <CardHeader>
@@ -63,7 +75,7 @@ async function DataStatus() {
           {runs.length === 0 ? (
             <EmptyState
               title="Nenhuma coleta executada ainda"
-              description="O banco local foi criado, mas ainda está vazio. A coleta da CVM, do Banco Central e das cotações será adicionada nas próximas etapas."
+              description={<>Rode <code className="font-mono">npm run ingest:cvm</code> para baixar as demonstrações da CVM.</>}
             />
           ) : (
             <Table>
@@ -74,23 +86,29 @@ async function DataStatus() {
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Registros</TableHead>
                   <TableHead>Dados de</TableHead>
-                  <TableHead>Executada em</TableHead>
+                  <TableHead>Verificada em</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {runs.map((r) => (
                   <TableRow key={r.job}>
-                    <TableCell className="font-mono text-xs">{r.job}</TableCell>
-                    <TableCell>{r.source}</TableCell>
+                    <TableCell className="font-mono text-xs whitespace-nowrap">{r.job}</TableCell>
                     <TableCell>
-                      <Badge variant={r.status === "ok" ? "secondary" : r.status === "error" ? "destructive" : "outline"}>
-                        {r.status === "ok" ? "OK" : r.status === "error" ? "Erro" : "Em andamento"}
-                      </Badge>
+                      {r.sourceUrl ? (
+                        <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+                          {r.source}
+                        </a>
+                      ) : (
+                        r.source
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={r.status} />
                       {r.message && <p className="mt-1 text-xs text-muted-foreground">{r.message}</p>}
                     </TableCell>
                     <TableCell className="num text-right">{formatNumber(r.rows, 0)}</TableCell>
                     <TableCell className="num">{formatDate(r.dataAsOf)}</TableCell>
-                    <TableCell className="num">{formatDateTime(r.finishedAt ?? r.startedAt)}</TableCell>
+                    <TableCell className="num">{formatDateTime(r.checkedAt ?? r.finishedAt ?? r.startedAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -104,11 +122,23 @@ async function DataStatus() {
   );
 }
 
+const STATUS: Record<string, { label: string; variant: "secondary" | "destructive" | "outline" }> = {
+  ok: { label: "Atualizado", variant: "secondary" },
+  skipped: { label: "Não publicado", variant: "outline" },
+  error: { label: "Erro", variant: "destructive" },
+  running: { label: "Em andamento", variant: "outline" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS[status] ?? STATUS.running;
+  return <Badge variant={s.variant}>{s.label}</Badge>;
+}
+
 function StatusSkeleton() {
   return (
     <div className="grid gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
       </div>

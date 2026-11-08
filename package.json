@@ -2,6 +2,7 @@
   "name": "fundamental-copilot-br",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/db-migrate.ts",
-    "validate": "npm run lint && npm run typecheck && npm test && npm run build"
+    "validate": "npm run lint && npm run typecheck && npm test && npm run build",
+    "ingest:cvm": "tsx scripts/ingest-cvm.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

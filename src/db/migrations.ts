@@ -96,6 +96,65 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX ai_reports_ticker_idx ON ai_reports (ticker, created_at);
   `,
+
+  // 2 — demonstrações da CVM (DFP/ITR)
+  `
+  ALTER TABLE companies ADD COLUMN layout TEXT;          -- standard | bank | insurance
+  ALTER TABLE companies ADD COLUMN listing_segment TEXT; -- Novo Mercado, Nível 1...
+
+  -- Documentos entregues (um por companhia/documento/data de referência)
+  CREATE TABLE filings (
+    cnpj TEXT NOT NULL,
+    doc TEXT NOT NULL,              -- DFP | ITR
+    period_end TEXT NOT NULL,       -- DT_REFER
+    version INTEGER NOT NULL,
+    received_at TEXT,               -- DT_RECEB
+    link TEXT,
+    PRIMARY KEY (cnpj, doc, period_end)
+  );
+
+  -- Linhas das demonstrações como publicadas (consolidado quando houver)
+  CREATE TABLE statement_lines (
+    cnpj TEXT NOT NULL,
+    doc TEXT NOT NULL,
+    statement TEXT NOT NULL,        -- BPA | BPP | DRE | DFC_MD | DFC_MI | DVA
+    consolidated INTEGER NOT NULL,
+    period_start TEXT NOT NULL,     -- '' para balanço
+    period_end TEXT NOT NULL,
+    code TEXT NOT NULL,
+    name TEXT NOT NULL,
+    value REAL,                     -- em R$ (já multiplicado pela escala)
+    fixed INTEGER NOT NULL,         -- conta fixa do plano CVM
+    PRIMARY KEY (cnpj, doc, statement, period_start, period_end, code)
+  ) WITHOUT ROWID;
+
+  -- Contas padronizadas (receita, EBIT, dívida...) usadas pelos indicadores
+  CREATE TABLE fin_values (
+    cnpj TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    period_start TEXT NOT NULL,     -- '' para saldos de balanço
+    period_end TEXT NOT NULL,
+    value REAL NOT NULL,
+    doc TEXT NOT NULL,
+    consolidated INTEGER NOT NULL,
+    origin TEXT NOT NULL,           -- conta/regra de onde o valor saiu
+    PRIMARY KEY (cnpj, metric, period_start, period_end)
+  ) WITHOUT ROWID;
+
+  -- Composição do capital (quantidade de ações)
+  CREATE TABLE share_counts (
+    cnpj TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    doc TEXT NOT NULL,
+    ordinary REAL,
+    preferred REAL,
+    total REAL,
+    treasury_ordinary REAL,
+    treasury_preferred REAL,
+    treasury_total REAL,
+    PRIMARY KEY (cnpj, period_end)
+  );
+  `,
 ];
 
 /** Aplica as migrações pendentes. Retorna a versão final do esquema. */
