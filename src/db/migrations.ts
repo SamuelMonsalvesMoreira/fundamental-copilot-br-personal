@@ -214,6 +214,21 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX company_snapshots_sector_idx ON company_snapshots (sector_key);
   `,
+
+  // 5 — premissas de projeção do usuário, por ticker
+  `
+  CREATE TABLE projections (
+    ticker TEXT PRIMARY KEY,
+    assumptions TEXT NOT NULL,     -- JSON validado por assumptionsSchema
+    updated_at TEXT NOT NULL
+  );
+  `,
+
+  // 6 — composição das units (ex.: TAEE11 = 1 ON + 2 PN)
+  `
+  ALTER TABLE tickers ADD COLUMN shares_per_unit REAL;
+  ALTER TABLE tickers ADD COLUMN unit_composition TEXT;
+  `,
 ];
 
 /** Aplica as migrações pendentes. Retorna a versão final do esquema. */

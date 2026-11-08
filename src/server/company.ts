@@ -42,8 +42,11 @@ export interface CompanyPageData {
   indicators: Record<string, Indicator>;
   ttm: { end: string; kind: "annual" | "ttm"; composition: string } | null;
   sources: { financials: string | null; price: string | null };
+  ttmValues: { revenue: number | null; netIncome: number | null };
   marketCapNote: string | null;
   sharesOutstanding: number | null;
+  /** texto para quando o ticker é unit: valores por ação são por unit */
+  unitNote: string | null;
   annual: SeriesPoint[];
   quarterly: SeriesPoint[];
   priceHistory: Array<{ date: string; close: number }>;
@@ -230,8 +233,14 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
     indicators: ind,
     ttm: a.ttm ? { end: a.ttm.end, kind: a.ttm.kind, composition: a.ttm.composition } : null,
     sources: a.sources,
+    ttmValues: { revenue: n(a.ttm?.values.revenue), netIncome: n(a.ttm?.values.netIncomeParent) },
     marketCapNote: a.marketCap?.note ?? null,
     sharesOutstanding: a.sharesOutstanding,
+    unitNote: a.unit
+      ? a.unit.sharesPerUnit
+        ? `${ref.ticker} é uma unit (${a.unit.composition ?? `${a.unit.sharesPerUnit} ações`}): LPA, VPA, valuation e projeções estão por unit`
+        : `${ref.ticker} é uma unit sem composição informada no FCA: valores por ação indisponíveis`
+      : null,
     annual,
     quarterly,
     priceHistory: loadPriceHistory(ref.ticker),

@@ -145,6 +145,11 @@ export function parseShareCounts(rows: Iterable<Record<string, string>>, doc: Cv
   return [...out.values()];
 }
 
+/** Documento com algum valor preenchido (o lucro por ação 3.99 não conta). */
+export function hasRealValues(lines: StatementLine[]): boolean {
+  return lines.some((l) => l.value !== null && l.value !== 0 && !l.code.startsWith("3.99"));
+}
+
 /** Lê um pacote ZIP inteiro (DFP ou ITR de um ano) para as companhias desejadas. */
 export function parsePackage(
   zip: Uint8Array,
@@ -175,7 +180,9 @@ export function parsePackage(
 
   const conRows = csv("DRE_con");
   const dreCon = conRows ? parseStatementRows(conRows, "DRE", true, keep) : new Map();
-  const hasCon = new Set(dreCon.keys());
+  // Consolidado só vale se tiver valores: há empresas (ex.: TIM, DFP 2025) que entregam o
+  // arquivo consolidado todo zerado e os números reais apenas no individual.
+  const hasCon = new Set([...dreCon].filter(([, v]) => hasRealValues(v)).map(([k]) => k));
 
   for (const st of STATEMENTS) {
     const con = st === "DRE" ? dreCon : (() => {
@@ -192,6 +199,9 @@ export function parsePackage(
       add(ind);
     }
   }
+
+  // documento inteiramente zerado equivale a dado ausente
+  for (const [k, v] of lines) if (!hasRealValues(v)) lines.delete(k);
 
   return { doc, year, filings, lines, shareCounts };
 }

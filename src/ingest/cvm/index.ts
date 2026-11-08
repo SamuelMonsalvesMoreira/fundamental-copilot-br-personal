@@ -71,7 +71,7 @@ export async function ingestRegistry(sqlite: Database.Database, opts: CvmOptions
          listing_segment = excluded.listing_segment, source = excluded.source, updated_at = excluded.updated_at`,
     );
     const insertTicker = sqlite.prepare(
-      `INSERT INTO tickers (ticker, cnpj, share_class, source, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO tickers (ticker, cnpj, share_class, shares_per_unit, unit_composition, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     );
 
     const known = new Set(cadastro.map((c) => c.cnpj));
@@ -86,7 +86,7 @@ export async function ingestRegistry(sqlite: Database.Database, opts: CvmOptions
       sqlite.prepare(`DELETE FROM tickers`).run();
       for (const t of tickers.values()) {
         if (!known.has(t.cnpj)) continue;
-        insertTicker.run(t.ticker, t.cnpj, t.shareClass, `${CVM_SOURCE} — FCA`, now);
+        insertTicker.run(t.ticker, t.cnpj, t.shareClass, t.sharesPerUnit, t.unitComposition, `${CVM_SOURCE} — FCA`, now);
       }
     })();
 

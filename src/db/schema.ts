@@ -30,6 +30,8 @@ export const tickers = sqliteTable(
     ticker: text("ticker").primaryKey(), // ex.: PETR4
     cnpj: text("cnpj").notNull(),
     shareClass: text("share_class"), // ON, PN, UNIT...
+    sharesPerUnit: real("shares_per_unit"), // só units: quantas ações compõem 1 unit
+    unitComposition: text("unit_composition"), // texto oficial do FCA
     source: text("source").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -221,3 +223,10 @@ export const tickerFetches = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.ticker, t.kind] })],
 );
+
+/** Premissas de projeção do usuário (JSON validado por assumptionsSchema). */
+export const projections = sqliteTable("projections", {
+  ticker: text("ticker").primaryKey(),
+  assumptions: text("assumptions").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});

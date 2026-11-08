@@ -71,6 +71,19 @@ describe("escala da quantidade de ações", () => {
     expect(d.scale).toBe(1);
   });
 
+  it("sem valor de mercado: usa a escala com P/VP plausível (ex.: Klabin, só a unit tem cotação)", () => {
+    const d = chooseShareScale({ marketCap: null, ordinary: 2_000_000_000, preferred: 4_000_000_000, priceOrdinary: 3.52, pricePreferred: 3.52, equity: 11e9 });
+    expect(d.scale).toBe(1);
+    expect(d.note).toContain("patrimônio");
+    const k = chooseShareScale({ marketCap: null, ordinary: 2_000_000, preferred: 4_000_000, priceOrdinary: 3.52, pricePreferred: 3.52, equity: 11e9 });
+    expect(k.scale).toBe(1000);
+  });
+
+  it("sem valor de mercado e sem P/VP plausível: não decide", () => {
+    expect(chooseShareScale({ marketCap: null, ordinary: 1000, preferred: 0, priceOrdinary: 1, pricePreferred: null, equity: 1e12 }).scale).toBeNull();
+    expect(chooseShareScale({ marketCap: null, ordinary: 1e6, preferred: 0, priceOrdinary: 10, pricePreferred: null, equity: null }).scale).toBeNull();
+  });
+
   it("não arrisca quando nada confere ou falta dado", () => {
     expect(chooseShareScale({ marketCap: 1e9, ordinary: 1e6, preferred: 0, priceOrdinary: 50, pricePreferred: null }).scale).toBeNull();
     expect(chooseShareScale({ marketCap: null, ordinary: 1e6, preferred: 0, priceOrdinary: 50, pricePreferred: null }).scale).toBeNull();

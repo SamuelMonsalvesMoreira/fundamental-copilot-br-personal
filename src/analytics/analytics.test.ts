@@ -104,6 +104,36 @@ describe("indicadores", () => {
     expect(i.payout.value).toBe(0.4);
   });
 
+  it("unit: LPA e VPA na mesma base do preço da unit", () => {
+    const u = analyzeCompany({
+      ...base,
+      ticker: "ABCD11",
+      shares: { periodEnd: "2025-12-31", ordinary: 300, preferred: 600, treasuryOrdinary: 0, treasuryPreferred: 0, scale: 1 },
+      quotes: [
+        { ticker: "ABCD11", shareClass: "UNIT", close: 30, date: "2026-01-10", marketCap: null, volume: 9, sharesPerUnit: 3, unitComposition: "1 ON / 2 PN" },
+        { ticker: "ABCD3", shareClass: "ON", close: 10, date: "2026-01-10", marketCap: null, volume: 1 },
+        { ticker: "ABCD4", shareClass: "PN", close: 10, date: "2026-01-10", marketCap: null, volume: 1 },
+      ],
+    });
+    expect(u.sharesOutstanding).toBe(300); // 900 ações ÷ 3 por unit
+    expect(u.indicators.lpa.value).toBeCloseTo(100 / 300);
+    expect(u.marketCap?.value).toBe(9000);
+    expect(u.indicators.pl.value).toBeCloseTo(90);
+    expect(30 / u.indicators.lpa.value!).toBeCloseTo(u.indicators.pl.value!); // preço ÷ LPA = P/L
+    expect(u.unit).toMatchObject({ sharesPerUnit: 3 });
+  });
+
+  it("unit sem composição: não inventa valor por ação", () => {
+    const u = analyzeCompany({ ...base, ticker: "ABCD11", quotes: [{ ticker: "ABCD11", shareClass: "UNIT", close: 30, date: "2026-01-10", marketCap: 5000, volume: 9, sharesPerUnit: null }] });
+    expect(u.indicators.lpa.value).toBeNull();
+    expect(u.indicators.lpa.missing).toContain("composição");
+  });
+
+  it("só a unit tem cotação: valor de mercado pelo preço implícito", () => {
+    const shares = { periodEnd: "2025-12-31", ordinary: 100, preferred: 400, treasuryOrdinary: 0, treasuryPreferred: 0, scale: 1 };
+    expect(marketCapOf(shares, [{ ticker: "KLBN11", shareClass: "UNIT", close: 20, date: "2026-01-10", marketCap: null, volume: 1, sharesPerUnit: 5 }])?.value).toBe(2000);
+  });
+
   it("DY pela DFC quando não há proventos por ação, avisando", () => {
     expect(i.dy.value).toBeCloseTo(40 / 20_000);
     expect(i.dy.note).toContain("fluxo de caixa");

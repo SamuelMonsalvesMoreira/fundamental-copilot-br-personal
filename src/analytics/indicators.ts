@@ -60,6 +60,9 @@ export interface TickerQuote {
   /** valor de mercado da companhia informado pela brapi */
   marketCap: number | null;
   volume: number | null;
+  /** só units: quantas ações compõem 1 unit (FCA) */
+  sharesPerUnit?: number | null;
+  unitComposition?: string | null;
 }
 
 export interface DividendRecord {
@@ -83,7 +86,10 @@ export interface CompanyAnalysis {
   ttm: TtmResult | null;
   annual: AnnualPoint[];
   price: { ticker: string; close: number; date: string } | null;
+  /** ações em circulação; se o ticker for unit, em units equivalentes */
   sharesOutstanding: number | null;
+  /** preenchido quando o ticker analisado é uma unit */
+  unit: { sharesPerUnit: number | null; composition: string | null } | null;
   marketCap: { value: number; method: "calculado" | "brapi"; note: string } | null;
   indicators: Record<string, Indicator>;
   sources: { financials: string | null; price: string | null };
@@ -142,6 +148,12 @@ export function marketCapOf(shares: ShareInfo | null, quotes: TickerQuote[]): Co
   const out = outstandingShares(shares);
   const on = quotes.find((q) => q.shareClass === "ON");
   const pn = quotes.find((q) => q.shareClass === "PN");
+  // só a unit tem cotação: preço por ação = preço da unit ÷ ações por unit
+  const unit = quotes.find((q) => q.shareClass === "UNIT" && q.sharesPerUnit);
+  if (out && !on && !pn && unit) {
+    const value = out.total * (unit.close / (unit.sharesPerUnit as number));
+    if (value > 0) return { value, method: "calculado", note: "ações em circulação × preço implícito da unit (preço da unit ÷ ações por unit)" };
+  }
   if (out && (on || pn)) {
     const pOn = on?.close ?? pn!.close;
     const pPn = pn?.close ?? on!.close;
@@ -188,7 +200,11 @@ export function analyzeCompany(input: CompanyInput): CompanyAnalysis {
 
   const mainQuote = input.quotes.find((q) => q.ticker === input.ticker) ?? input.quotes[0] ?? null;
   const price = mainQuote ? { ticker: mainQuote.ticker, close: mainQuote.close, date: mainQuote.date } : null;
-  const shares = outstandingShares(input.shares);
+  const allShares = outstandingShares(input.shares);
+  // Unit negocia um pacote de ações: LPA, VPA e valuation precisam estar na mesma base do preço.
+  const isUnit = mainQuote?.shareClass === "UNIT";
+  const unitFactor = isUnit ? (mainQuote?.sharesPerUnit ?? null) : 1;
+  const tickerShares = allShares && unitFactor ? allShares.total / unitFactor : null;
   const mcap = marketCapOf(input.shares, input.quotes);
 
   const finPeriod = ttm ? (ttm.kind === "ttm" ? `12 meses até ${fmtDateBr(ttm.end)}` : `ano até ${fmtDateBr(ttm.end)}`) : "—";
@@ -244,12 +260,18 @@ export function analyzeCompany(input: CompanyInput): CompanyAnalysis {
   add({ key: "netDebt", label: "Dívida líquida", group: "endividamento", value: netDebt ?? null, format: "currency", formula: "Empréstimos e financiamentos (CP + LP) − caixa − aplicações financeiras de curto prazo", inputs: [bal("Dívida bruta", grossDebt), bal("Caixa e aplicações", cash)], period: balPeriod });
 
   // ── por ação ──
-  const lpa = shares ? div(ni, shares.total, true) : null;
-  const vpa = shares ? div(equityParent, shares.total, true) : null;
-  const inShares: IndicatorInput = { label: "Ações em circulação", value: shares?.total ?? null, format: "number", period: input.shares ? `em ${fmtDateBr(input.shares.periodEnd)}` : undefined, source: `${CVM} (composição do capital)` };
-  const sharesMissing = input.shares && !input.shares.scale ? "quantidade de ações não conferida contra o valor de mercado" : undefined;
-  add({ key: "lpa", label: "LPA (12m)", group: "valuation", value: lpa, format: "perShare", formula: "Lucro líquido dos controladores ÷ ações em circulação", inputs: [fin("Lucro líquido (controladores)", ni), inShares], period: finPeriod, missing: shares ? undefined : sharesMissing });
-  add({ key: "vpa", label: "VPA", group: "valuation", value: vpa, format: "perShare", formula: "Patrimônio líquido dos controladores ÷ ações em circulação", inputs: [bal("Patrimônio líquido (controladores)", equityParent), inShares], period: balPeriod, missing: shares ? undefined : sharesMissing });
+  const lpa = tickerShares ? div(ni, tickerShares, true) : null;
+  const vpa = tickerShares ? div(equityParent, tickerShares, true) : null;
+  const inShares: IndicatorInput = { label: isUnit ? "Units equivalentes" : "Ações em circulação", value: tickerShares, format: "number", period: input.shares ? `em ${fmtDateBr(input.shares.periodEnd)}` : undefined, source: `${CVM} (composição do capital)` };
+  const sharesMissing =
+    isUnit && !unitFactor
+      ? "composição da unit não informada no FCA"
+      : input.shares && !input.shares.scale
+        ? "quantidade de ações não conferida contra o valor de mercado"
+        : undefined;
+  const perLabel = isUnit ? "units equivalentes" : "ações em circulação";
+  add({ key: "lpa", label: "LPA (12m)", group: "valuation", value: lpa, format: "perShare", formula: `Lucro líquido dos controladores ÷ ${perLabel}`, inputs: [fin("Lucro líquido (controladores)", ni), inShares], period: finPeriod, missing: tickerShares ? undefined : sharesMissing });
+  add({ key: "vpa", label: "VPA", group: "valuation", value: vpa, format: "perShare", formula: `Patrimônio líquido dos controladores ÷ ${perLabel}`, inputs: [bal("Patrimônio líquido (controladores)", equityParent), inShares], period: balPeriod, missing: tickerShares ? undefined : sharesMissing });
 
   // ── valuation ──
   add({ key: "pl", label: "P/L", group: "valuation", value: div(mcap?.value, ni), format: "multiple", formula: "Valor de mercado ÷ lucro líquido dos controladores (12m)", inputs: [inMcap, fin("Lucro líquido (controladores)", ni)], period: finPeriod, note: ni !== undefined && ni <= 0 ? "lucro negativo: P/L não tem significado" : undefined });
@@ -299,7 +321,8 @@ export function analyzeCompany(input: CompanyInput): CompanyAnalysis {
     ttm,
     annual,
     price,
-    sharesOutstanding: shares?.total ?? null,
+    sharesOutstanding: tickerShares,
+    unit: isUnit ? { sharesPerUnit: unitFactor, composition: mainQuote?.unitComposition ?? null } : null,
     marketCap: mcap,
     indicators,
     sources: {

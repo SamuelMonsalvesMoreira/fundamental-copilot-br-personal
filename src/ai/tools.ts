@@ -4,6 +4,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { dcf } from "@/analytics/valuation";
 import { getCompanyPage, getStatements, searchTickers, type CompanyPageData, type SeriesPoint } from "@/server/company";
 import { getMacroSnapshot } from "@/server/macro";
+import { getSavedProjection } from "@/server/projections";
 import { calculate } from "./calc";
 
 /**
@@ -90,6 +91,12 @@ export const TOOL_DEFINITIONS: Tool[] = [
     },
   },
   {
+    name: "projecoes_usuario",
+    description:
+      "Projeção de lucro e dividendos que o PRÓPRIO USUÁRIO salvou para a empresa (premissas e resultado por ano). São estimativas dele, não dados oficiais. Retorna salva=false se não houver.",
+    input_schema: { type: "object", properties: { ticker: tickerProp }, required: ["ticker"] },
+  },
+  {
     name: "calcular",
     description:
       "Calculadora aritmética (+ - * / ^ e parênteses). Use SEMPRE que precisar derivar um número (variação, soma, razão) a partir dos dados, em vez de calcular de cabeça.",
@@ -116,6 +123,7 @@ const SCHEMAS = {
   }),
   dividendos: z.object({ ticker: T }),
   demonstracao: z.object({ ticker: T, tipo: z.enum(["DRE", "BPA", "BPP", "DFC"]), ano: z.number().int().min(2000).max(2100).optional() }),
+  projecoes_usuario: z.object({ ticker: T }),
   calcular: z.object({ expressao: z.string().min(1).max(300) }),
 } as const;
 
@@ -190,6 +198,7 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
         preco: p.quote ? { valor: p.quote.close, data: p.quote.date, variacao_dia_fracao: r(p.quote.changePct), fonte: "brapi.dev" } : null,
         valor_mercado_mi: mi(p.indicators.marketCap?.value),
         acoes_em_circulacao: p.sharesOutstanding,
+        observacao_unit: p.unitNote,
         resultados_periodo: p.ttm ? (p.ttm.kind === "ttm" ? `12 meses até ${p.ttm.end} (${p.ttm.composition})` : `exercício até ${p.ttm.end}`) : null,
         fontes: p.sources,
       };
@@ -345,6 +354,43 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
         linhas: t.rows
           .filter((row) => row.depth <= 2)
           .map((row) => ({ conta: row.code, nome: row.name, valores_mi: [row.values[idx - 1], row.values[idx]].filter((_, i) => i > 0 || idx > 0).map(mi) })),
+      };
+    }
+
+    case "projecoes_usuario": {
+      const v = await getSavedProjection(String(input.ticker));
+      if (!v) return { salva: false, mensagem: "O usuário ainda não salvou projeção para esta empresa." };
+      return {
+        salva: true,
+        natureza: "Estimativas do próprio usuário; não são dados oficiais nem previsão.",
+        salva_em: v.updatedAt,
+        premissas: {
+          modo: v.assumptions.mode,
+          crescimento_anual_fracao: v.assumptions.growth,
+          margem_liquida_fracao: v.assumptions.mode === "receita" ? v.assumptions.netMargin : null,
+          payout_fracao: v.assumptions.payout,
+          anos: v.assumptions.years,
+          pl_saida: v.assumptions.exitPl,
+          anos_digitados_a_mao: Object.keys(v.assumptions.overrides),
+        },
+        preco_atual: v.price,
+        preco_medio_usuario: r(v.avgCost, 2),
+        anos: v.result.rows.map((x) => ({
+          ano: x.year,
+          ate: x.end,
+          lucro_mi: mi(x.netIncome),
+          lpa: r(x.eps, 2),
+          payout_fracao: r(x.payout),
+          dividendos_mi: mi(x.dividends),
+          dividendo_por_acao: r(x.dps, 2),
+          dy_sobre_preco_fracao: r(x.yieldOnPrice),
+          dy_sobre_custo_fracao: r(x.yieldOnCost),
+        })),
+        dividendos_por_acao_acumulados: r(v.result.cumulativeDps, 2),
+        preco_implicito: r(v.result.exitPrice, 2),
+        retorno_total_fracao: r(v.result.totalReturn),
+        retorno_ao_ano_fracao: r(v.result.annualizedReturn),
+        limitacoes: v.result.missing,
       };
     }
 

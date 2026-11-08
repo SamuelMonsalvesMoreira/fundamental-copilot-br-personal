@@ -127,6 +127,7 @@ const DIVIDENDS_RE = /(dividend|juros sobre (o )?capital|jscp|jcp)/;
 const DIVIDENDS_EXCLUDE_RE = /(recebid|recebimento)/;
 const NET_INCOME_RE = /^lucro( ou |\/)prejuizo (liquido )?(consolidado )?do periodo$/;
 const PARENT_RE = /^atribuido (a|aos) socios da empresa controladora/;
+const MINORITY_RE = /^atribuido (a|aos) socios nao controladores/;
 const DA_RE = /(deprecia|amortiza|exaust)/;
 const DA_EXCLUDE_RE = /(custo|agio|desagio|emprestimo|financiamento|debenture|juros|captac|ajuste a valor)/;
 
@@ -187,8 +188,17 @@ export function standardize(lines: StatementLine[], layout: Layout = detectLayou
       pushLine("netIncome", net);
       if (net) {
         const parent = f.find((n) => PARENT_RE.test(n), { parent: net.code });
-        if (parent) pushLine("netIncomeParent", parent);
-        else pushLine("netIncomeParent", net); // demonstração individual: tudo é da controladora
+        const minority = f.find((n) => MINORITY_RE.test(n), { parent: net.code });
+        if (parent?.value) {
+          pushLine("netIncomeParent", parent);
+        } else if (net.value !== null && minority?.value) {
+          // controladora não preenchida, mas há minoritários: lucro total − minoritários
+          push("netIncomeParent", net, net.value - minority.value, `${net.code}-${minority.code}`);
+        } else if (net.value !== null) {
+          // Demonstração individual, ou linha "controladora" entregue zerada à CVM
+          // (comum: TIM, Klabin, Hapvida...). Sem minoritários, o lucro é da controladora.
+          push("netIncomeParent", net, net.value, parent ? `${net.code} (controladora não preenchida)` : net.code);
+        }
       }
       // LPA vem em R$/ação; muitas empresas deixam zerado — só guardamos se preenchido.
       const eps = f.find(equals("lucro basico por acao"), { depth: 2 }) ?? f.code("3.99.01");

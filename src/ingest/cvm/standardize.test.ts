@@ -103,6 +103,33 @@ describe("standardize — casos especiais", () => {
     expect(get(v, "netIncomeParent")).toMatchObject({ value: 23.67, origin: "3.11.01" });
   });
 
+  it("controladora entregue zerada: usa o lucro consolidado", () => {
+    const v = standardize([
+      base({ code: "3.11", name: "Lucro/Prejuízo Consolidado do Período", value: 282.7 }),
+      base({ code: "3.11.01", name: "Atribuído a Sócios da Empresa Controladora", value: 0 }),
+      base({ code: "3.11.02", name: "Atribuído a Sócios Não Controladores", value: 0 }),
+    ]);
+    expect(get(v, "netIncomeParent")).toMatchObject({ value: 282.7, origin: "3.11 (controladora não preenchida)" });
+  });
+
+  it("controladora zerada com minoritários preenchidos: desconta os minoritários", () => {
+    const v = standardize([
+      base({ code: "3.11", name: "Lucro/Prejuízo Consolidado do Período", value: 100 }),
+      base({ code: "3.11.01", name: "Atribuído a Sócios da Empresa Controladora", value: 0 }),
+      base({ code: "3.11.02", name: "Atribuído a Sócios Não Controladores", value: 30 }),
+    ]);
+    expect(get(v, "netIncomeParent")).toMatchObject({ value: 70, origin: "3.11-3.11.02" });
+  });
+
+  it("todo o lucro de minoritários: controladora é zero de verdade", () => {
+    const v = standardize([
+      base({ code: "3.11", name: "Lucro/Prejuízo Consolidado do Período", value: 50 }),
+      base({ code: "3.11.01", name: "Atribuído a Sócios da Empresa Controladora", value: 0 }),
+      base({ code: "3.11.02", name: "Atribuído a Sócios Não Controladores", value: 50 }),
+    ]);
+    expect(get(v, "netIncomeParent")?.value).toBe(0);
+  });
+
   it("valor ausente não vira zero", () => {
     const v = standardize([base({ value: null })]);
     expect(get(v, "revenue")).toBeUndefined();

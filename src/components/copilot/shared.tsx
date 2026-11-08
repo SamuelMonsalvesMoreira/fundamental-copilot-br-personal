@@ -40,6 +40,7 @@ export const TOOL_LABELS: Record<string, string> = {
   valuation: "valuation",
   dividendos: "dividendos",
   demonstracao: "demonstração financeira",
+  projecoes_usuario: "suas projeções",
   calcular: "cálculo",
 };
 

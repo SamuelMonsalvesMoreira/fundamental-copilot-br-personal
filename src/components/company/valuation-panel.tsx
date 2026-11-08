@@ -42,7 +42,7 @@ function ResultCard({ title, result, children, footer }: { title: string; result
   );
 }
 
-function PercentInput({ label, value, onChange, step = 0.5, hint }: { label: string; value: number; onChange: (v: number) => void; step?: number; hint?: string }) {
+export function PercentInput({ label, value, onChange, step = 0.5, hint }: { label: string; value: number; onChange: (v: number) => void; step?: number; hint?: string }) {
   return (
     <label className="grid gap-1 text-xs">
       <span className="text-muted-foreground">{label}</span>
@@ -65,7 +65,7 @@ function PercentInput({ label, value, onChange, step = 0.5, hint }: { label: str
   );
 }
 
-function NumberInput({ label, value, onChange, suffix, hint, step = 1 }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string; step?: number }) {
+export function NumberInput({ label, value, onChange, suffix, hint, step = 1 }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string; step?: number }) {
   return (
     <label className="grid gap-1 text-xs">
       <span className="text-muted-foreground">{label}</span>

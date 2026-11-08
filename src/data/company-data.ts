@@ -118,7 +118,8 @@ export function loadCompanyInput(sqlite: Database.Database, cnpj: string, prefer
 
   const quotes = sqlite
     .prepare(
-      `SELECT t.ticker, t.share_class AS shareClass, q.close, q.date, q.market_cap AS marketCap, q.volume
+      `SELECT t.ticker, t.share_class AS shareClass, t.shares_per_unit AS sharesPerUnit, t.unit_composition AS unitComposition,
+              q.close, q.date, q.market_cap AS marketCap, q.volume
          FROM tickers t
          JOIN quotes_daily q ON q.ticker = t.ticker
         WHERE t.cnpj = ? AND q.date = (SELECT MAX(date) FROM quotes_daily WHERE ticker = t.ticker)`,

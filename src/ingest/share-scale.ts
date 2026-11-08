@@ -24,6 +24,8 @@ export interface ScaleInput {
   preferred: number | null;
   priceOrdinary: number | null;
   pricePreferred: number | null;
+  /** patrimônio dos controladores (R$): critério de reserva quando não há valor de mercado */
+  equity?: number | null;
 }
 
 export interface ScaleDecision {
@@ -32,8 +34,30 @@ export interface ScaleDecision {
   note: string;
 }
 
+/**
+ * Critério de reserva: a escala certa dá um P/VP plausível. Como as escalas
+ * diferem por 1.000x, normalmente só uma cabe na faixa; se nenhuma ou mais de
+ * uma couber, não decide.
+ */
+function scaleByBookValue(i: ScaleInput): ScaleDecision {
+  const none: ScaleDecision = { scale: null, ratio: null, note: "sem valor de mercado para conferir" };
+  const pOn = i.priceOrdinary ?? i.pricePreferred;
+  const pPn = i.pricePreferred ?? i.priceOrdinary;
+  if (!i.equity || i.equity <= 0 || !pOn || !pPn) return none;
+  const base = (i.ordinary ?? 0) * pOn + (i.preferred ?? 0) * pPn;
+  if (base <= 0) return none;
+  const fits = CANDIDATE_SCALES.filter((f) => {
+    const pvp = (base * f) / i.equity!;
+    return pvp >= 0.1 && pvp <= 20;
+  });
+  if (fits.length !== 1) return none;
+  const f = fits[0];
+  const unit = f === 1 ? "unidades" : f === 1000 ? "milhares" : "milhões";
+  return { scale: f, ratio: null, note: `informado em ${unit} (conferido pelo patrimônio, sem valor de mercado)` };
+}
+
 export function chooseShareScale(i: ScaleInput): ScaleDecision {
-  if (!i.marketCap || i.marketCap <= 0) return { scale: null, ratio: null, note: "sem valor de mercado para conferir" };
+  if (!i.marketCap || i.marketCap <= 0) return scaleByBookValue(i);
   const on = i.ordinary ?? 0;
   const pn = i.preferred ?? 0;
   // se uma classe não tem cotação própria, usa o preço da outra
@@ -73,28 +97,34 @@ export function resolveShareScales(sqlite: Database.Database) {
 
   // última cotação + valor de mercado de cada ticker da companhia
   const quotes = sqlite.prepare(
-    `SELECT t.share_class AS cls, q.close, q.market_cap AS mcap
+    `SELECT t.share_class AS cls, t.shares_per_unit AS perUnit, q.close, q.market_cap AS mcap
        FROM tickers t
        JOIN quotes_daily q ON q.ticker = t.ticker
       WHERE t.cnpj = ? AND q.date = (SELECT MAX(date) FROM quotes_daily WHERE ticker = t.ticker)`,
   );
   const update = sqlite.prepare(`UPDATE companies SET share_scale = ?, share_scale_note = ? WHERE cnpj = ?`);
+  const equityOf = sqlite.prepare(
+    `SELECT value FROM fin_values WHERE cnpj = ? AND metric = 'equityParent' ORDER BY period_end DESC LIMIT 1`,
+  );
 
   const stats = { resolved: 0, unresolved: 0, thousands: 0 };
   sqlite.transaction(() => {
     for (const c of companies) {
-      const qs = quotes.all(c.cnpj) as Array<{ cls: string; close: number; mcap: number | null }>;
+      const qs = quotes.all(c.cnpj) as Array<{ cls: string; perUnit: number | null; close: number; mcap: number | null }>;
       const on = qs.find((q) => q.cls === "ON");
       const pn = qs.find((q) => q.cls === "PN");
       const marketCap = Math.max(0, ...qs.map((q) => q.mcap ?? 0)) || null;
+      // só a unit tem cotação (ex.: KLBN11): preço por ação = preço da unit ÷ ações por unit
+      const unit = qs.find((q) => q.cls === "UNIT" && q.perUnit);
+      const unitPx = unit ? unit.close / (unit.perUnit as number) : null;
       const d = chooseShareScale({
         marketCap,
         ordinary: c.ordinary,
         preferred: c.preferred,
-        priceOrdinary: on?.close ?? null,
-        pricePreferred: pn?.close ?? null,
+        priceOrdinary: on?.close ?? unitPx,
+        pricePreferred: pn?.close ?? unitPx,
+        equity: (equityOf.get(c.cnpj) as { value: number } | undefined)?.value ?? null,
       });
-      // sem cotação de ON/PN (só units), não há como conferir
       update.run(d.scale, d.note, c.cnpj);
       if (d.scale === null) stats.unresolved++;
       else {

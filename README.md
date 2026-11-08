@@ -112,6 +112,24 @@ aparecem como "não se aplica".
 **Conferência**: `src/analytics/published.test.ts` compara os cálculos com números
 publicados por WEG, Petrobras e Itaú em 2025, explicando as diferenças de metodologia.
 
+**Units** (TAEE11, KLBN11, SANB11...): o preço é de um pacote de ações, então LPA, VPA, valuation e
+projeções saem **por unit**, usando a composição informada no FCA da CVM.
+
+## Projeções
+
+Aba **Projeções** na página da empresa e página `/projecoes` com todas as salvas. São estimativas
+**suas**, sempre marcadas como tal e separadas dos dados oficiais.
+
+- Parte do lucro real de 12 meses, da quantidade de ações e do preço atual.
+- Premissas: crescimento do lucro (ou receita × margem líquida), payout, anos e P/L no último ano.
+  Os valores iniciais vêm do histórico, com a explicação ao lado.
+- Lucro e payout podem ser digitados em qualquer ano; os anos seguintes partem do valor digitado.
+- Resultado por ano: lucro, LPA, dividendos, dividendo por ação, dividend yield sobre o preço e sobre
+  o seu preço médio (se a ação estiver na carteira) e P/L projetado.
+- Cenários pessimista, base e otimista (±5 p.p. no crescimento), com preço implícito e retorno.
+  O retorno não reinveste dividendos, e a quantidade de ações é mantida constante.
+- O copiloto pode ler a projeção salva (ferramenta `projecoes_usuario`), sempre como estimativa sua.
+
 ## Copiloto com IA (Claude)
 
 Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de

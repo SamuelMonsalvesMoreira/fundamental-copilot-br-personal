@@ -18,6 +18,7 @@ const inputs: Record<string, unknown> = {
   valuation: { ticker },
   dividendos: { ticker },
   demonstracao: { ticker, tipo: "BPP" },
+  projecoes_usuario: { ticker },
   calcular: { expressao: "(40804.1 / 37990.2 - 1) * 100" },
 };
 for (const t of TOOL_DEFINITIONS) {

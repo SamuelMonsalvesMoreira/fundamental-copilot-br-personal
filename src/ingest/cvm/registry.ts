@@ -50,6 +50,30 @@ export interface TickerRow {
   shareClass: "ON" | "PN" | "UNIT";
   segment: string | null;
   referenceDate: string;
+  /** só units: total de ações por unit, lido do FCA */
+  sharesPerUnit: number | null;
+  unitComposition: string | null;
+}
+
+/**
+ * Lê a composição de uma unit no texto livre do FCA:
+ * "1 ON / 2 PN", "1 ação ordinária e 4 ações preferenciais",
+ * "1 KLBN3 + 4 KLBN4", "1 ON e 2PNs". Retorna null se não entender.
+ */
+export function parseUnitComposition(text: string | null | undefined): { on: number; pn: number; total: number } | null {
+  if (!text) return null;
+  const t = normalizeText(text);
+  if (/recibo|bonus/.test(t)) return null;
+  let on = 0;
+  let pn = 0;
+  for (const m of t.matchAll(/(\d+)\s*(?:\([a-z]+\)\s*)?(?:ac(?:ao|oes)\s+)?(ordinarias?|on\b|preferenciais|preferencial|pna?s?\b|[a-z]{4}[3-8]\b)/g)) {
+    const qty = Number(m[1]);
+    const kind = m[2];
+    if (kind.startsWith("ordin") || kind === "on" || kind.endsWith("3")) on += qty;
+    else pn += qty;
+  }
+  const total = on + pn;
+  return total > 0 ? { on, pn, total } : null;
 }
 
 const TICKER_RE = /^[A-Z0-9]{4}(3|4|5|6|7|8|11)$/;
@@ -91,7 +115,16 @@ export function parseFcaTickers(text: string): TickerRow[] {
     if (!shareClass) continue;
     const ticker = r.Codigo_Negociacao.trim().toUpperCase();
     if (!TICKER_RE.test(ticker)) continue;
-    out.set(ticker, { ticker, cnpj, shareClass, segment: r.Segmento?.trim() || null, referenceDate: l.date });
+    const composition = shareClass === "UNIT" ? r.Composicao_BDR_Unit?.trim() || null : null;
+    out.set(ticker, {
+      ticker,
+      cnpj,
+      shareClass,
+      segment: r.Segmento?.trim() || null,
+      referenceDate: l.date,
+      sharesPerUnit: parseUnitComposition(composition)?.total ?? null,
+      unitComposition: composition,
+    });
   }
   return [...out.values()];
 }

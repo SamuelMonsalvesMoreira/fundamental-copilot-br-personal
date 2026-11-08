@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { iterateCsv, splitCsvLine } from "../csv";
-import { parseCadastro, parseFcaTickers } from "./registry";
-import { parseShareCounts, parseStatementRows } from "./statements";
+import { parseCadastro, parseFcaTickers, parseUnitComposition } from "./registry";
+import { hasRealValues, parseShareCounts, parseStatementRows } from "./statements";
 
 const csv = (header: string[], rows: string[][]) =>
   [header.join(";"), ...rows.map((r) => r.join(";"))].join("\r\n") + "\r\n";
@@ -46,6 +46,27 @@ describe("cadastro e FCA", () => {
   });
 });
 
+describe("composição das units (textos reais do FCA)", () => {
+  it.each([
+    ["1 ON / 2 PN", 1, 2],
+    ["1 ON E 2 PN", 1, 2],
+    ["1 ação ordinária e 4 ações preferenciais", 1, 4],
+    ["2 ações preferenciais e 1 ação ordinária", 1, 2],
+    ["1 ON e 2PNs", 1, 2],
+    ["1 ON E 2 PNA", 1, 2],
+    ["1 KLBN3 + 4 KLBN4", 1, 4],
+    ["1 ON + 1 PN", 1, 1],
+  ])("%s", (text, on, pn) => {
+    expect(parseUnitComposition(text)).toEqual({ on, pn, total: on + pn });
+  });
+
+  it("não adivinha quando não entende", () => {
+    expect(parseUnitComposition("")).toBeNull();
+    expect(parseUnitComposition("N/A")).toBeNull();
+    expect(parseUnitComposition("1 PN + 3 Recibos de Subscrição")).toBeNull();
+  });
+});
+
 describe("demonstrações DFP/ITR", () => {
   const H = ["CNPJ_CIA", "DT_REFER", "VERSAO", "ESCALA_MOEDA", "ORDEM_EXERC", "DT_INI_EXERC", "DT_FIM_EXERC", "CD_CONTA", "DS_CONTA", "VL_CONTA", "ST_CONTA_FIXA"];
 
@@ -61,6 +82,13 @@ describe("demonstrações DFP/ITR", () => {
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatchObject({ code: "3.01", value: 40_804_110_000, periodStart: "2025-01-01" });
     expect(lines[1]).toMatchObject({ code: "3.99.01", value: 1.52 });
+  });
+
+  it("documento todo zerado não conta como preenchido (consolidado vazio da TIM)", () => {
+    const line = (code: string, value: number | null) => ({ cnpj: "1", statement: "DRE" as const, consolidated: true, periodStart: "", periodEnd: "2025-12-31", code, name: "x", value, fixed: true });
+    expect(hasRealValues([line("3.01", 0), line("3.11", 0), line("3.99.01", 1.5)])).toBe(false);
+    expect(hasRealValues([line("3.01", null)])).toBe(false);
+    expect(hasRealValues([line("3.01", 10)])).toBe(true);
   });
 
   it("filtra companhias fora da lista", () => {

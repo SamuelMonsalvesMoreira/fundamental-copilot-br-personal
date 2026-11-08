@@ -9,6 +9,7 @@ export const NAV_ITEMS = [
   { href: "/", label: "Início" },
   { href: "/screener", label: "Screener" },
   { href: "/comparar", label: "Comparar" },
+  { href: "/projecoes", label: "Projeções" },
   { href: "/carteira", label: "Carteira" },
   { href: "/dados", label: "Dados" },
 ] as const;
