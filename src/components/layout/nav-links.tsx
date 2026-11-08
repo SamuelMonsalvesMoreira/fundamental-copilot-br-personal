@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 export const NAV_ITEMS = [
   { href: "/", label: "Início" },
+  { href: "/panorama", label: "Panorama" },
   { href: "/screener", label: "Screener" },
   { href: "/comparar", label: "Comparar" },
   { href: "/projecoes", label: "Projeções" },
@@ -28,7 +29,7 @@ export function NavLinks({ variant }: { variant: "desktop" | "mobile" }) {
 export function NavList({ variant, pathname }: { variant: "desktop" | "mobile"; pathname: string | null }) {
   if (variant === "desktop") {
     return (
-      <nav aria-label="Principal" className="ml-2 hidden items-center gap-1 md:flex">
+      <nav aria-label="Principal" className="ml-2 hidden items-center gap-1 lg:flex">
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.href}
@@ -46,7 +47,7 @@ export function NavList({ variant, pathname }: { variant: "desktop" | "mobile"; 
     );
   }
   return (
-    <nav aria-label="Principal (celular)" className="flex gap-1 overflow-x-auto border-t px-4 py-1.5 [scrollbar-width:none] md:hidden">
+    <nav aria-label="Principal (celular)" className="flex gap-1 overflow-x-auto border-t px-4 py-1.5 [scrollbar-width:none] lg:hidden">
       {NAV_ITEMS.map((item) => (
         <Link
           key={item.href}

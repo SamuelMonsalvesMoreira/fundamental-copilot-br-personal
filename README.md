@@ -156,6 +156,13 @@ atenção com os números, tendências e modelos de valuation. Você pode inform
 e o payout: o relatório calcula LPA, P/L projetado, dividendo por ação e rendimento na hora.
 O botão **Exportar PDF** abre a impressão do navegador; escolha "Salvar como PDF".
 
+## Panorama
+
+A tela **Panorama** resume o mercado: quantas empresas têm ROE acima da Selic, medianas de P/L, ROE e
+dividend yield, gráfico de preço por rentabilidade, maiores setores e tabela com busca. Ela lê direto do
+banco local e não usa IA. Inicie com `npm run dev:all` para o agendador recuperar coletas atrasadas
+assim que o app abre; só com `npm run dev` os dados não são atualizados.
+
 ## Pares
 
 O grupo automático usa empresas do mesmo setor com porte de até 10× para mais ou para menos, liquidez
