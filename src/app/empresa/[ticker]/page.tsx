@@ -10,6 +10,10 @@ import { PeersTable } from "@/components/company/peers-table";
 import { Statements } from "@/components/company/statements";
 import { ValuationPanel } from "@/components/company/valuation-panel";
 import { CompanyPageSkeleton } from "@/components/company/skeleton";
+import { CopilotChat } from "@/components/copilot/chat";
+import { ReportPanel } from "@/components/copilot/report-panel";
+import { hasApiKey, REPORT_MODEL } from "@/ai/agent";
+import { getLatestReport } from "@/server/reports";
 import { formatCompactCurrency, formatDate } from "@/lib/format";
 import { getCompanyPage, getStatements, type CompanyPageData } from "@/server/company";
 
@@ -32,6 +36,8 @@ async function Company({ params }: { params: PageProps<"/empresa/[ticker]">["par
   const data = await getCompanyPage(decodeURIComponent(ticker));
   if (!data) notFound();
   const statements = getStatements(data.ticker);
+  const aiEnabled = hasApiKey();
+  const isFinancial = data.meta.layout === "bank" || data.meta.layout === "insurance";
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-5 [&>*]:min-w-0">
@@ -43,6 +49,8 @@ async function Company({ params }: { params: PageProps<"/empresa/[ticker]">["par
           { value: "demonstracoes", label: "Demonstrações", content: <Statements tables={statements} cvmCode={data.meta.cvmCode} /> },
           { value: "valuation", label: "Valuation", content: <ValuationPanel v={data.valuation} ticker={data.ticker} /> },
           { value: "pares", label: "Pares", content: <PeersTable peers={data.peers} current={data.ticker} sector={data.meta.sector} /> },
+          { value: "copiloto", label: "Copiloto", content: <CopilotChat ticker={data.ticker} enabled={aiEnabled} isFinancial={isFinancial} /> },
+          { value: "relatorio", label: "Relatório", content: <ReportPanel ticker={data.ticker} report={getLatestReport(data.ticker)} enabled={aiEnabled} model={REPORT_MODEL()} /> },
         ]}
       />
     </div>

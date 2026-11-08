@@ -112,6 +112,26 @@ aparecem como "não se aplica".
 **Conferência**: `src/analytics/published.test.ts` compara os cálculos com números
 publicados por WEG, Petrobras e Itaú em 2025, explicando as diferenças de metodologia.
 
+## Copiloto com IA (Claude)
+
+Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de
+`ANTHROPIC_API_KEY` no `.env.local`; sem ela, as abas explicam como ativar.
+
+- **A IA não "lembra" números.** Ela chama ferramentas (`src/ai/tools.ts`) que leem o banco
+  local: resumo, indicadores (com fórmula, período e fonte), histórico anual/trimestral, pares do
+  setor, Selic/CDI/IPCA, valuation, dividendos, linhas das demonstrações e uma calculadora para
+  qualquer conta derivada.
+- **Verificação de números:** cada resposta é conferida contra os números que as ferramentas
+  devolveram (`src/ai/verify.ts`). O que não bate aparece marcado como "não verificado".
+- **Regras do prompt** (`src/ai/prompts.ts`): citar período e fonte, dizer quando um dado falta ou
+  não se aplica, não recomendar compra/venda e terminar com o aviso de que não é recomendação.
+- **Modelos:** chat com `claude-sonnet-5-5` (esforço médio) e relatório com `claude-opus-5-5`
+  (esforço alto), configuráveis por `CLAUDE_CHAT_MODEL` / `CLAUDE_REPORT_MODEL`. Usa fallback do
+  servidor (`fallbacks: "default"`) se um modelo recusar, e cache do prompt (ferramentas + regras).
+- **Relatórios** ficam salvos na tabela `ai_reports` com a data dos dados usados.
+- `npm run check:ai-tools -- WEGE3` executa todas as ferramentas sem chamar a API, para ver o que a
+  IA recebe.
+
 ## Estrutura
 
 ```

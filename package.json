@@ -17,7 +17,8 @@
     "ingest:market": "tsx scripts/ingest-market.ts",
     "worker": "tsx scripts/worker.ts",
     "dev:all": "concurrently -k -n app,worker -c blue,magenta \"next dev\" \"tsx scripts/worker.ts\"",
-    "show": "tsx scripts/show-company.ts"
+    "show": "tsx scripts/show-company.ts",
+    "check:ai-tools": "tsx --conditions=react-server scripts/check-ai-tools.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
@@ -33,7 +34,9 @@
     "node-cron": "^4.6.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.10.1",
+    "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
     "shadcn": "^4.23.0",
     "sonner": "^2.0.8",
