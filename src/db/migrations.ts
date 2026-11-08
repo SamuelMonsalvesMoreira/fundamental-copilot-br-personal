@@ -155,6 +155,39 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (cnpj, period_end)
   );
   `,
+
+  // 3 — mercado (brapi) e escala da quantidade de ações
+  `
+  -- Dados de mercado por ticker (lista diária da brapi)
+  CREATE TABLE market_info (
+    ticker TEXT PRIMARY KEY,
+    name TEXT,
+    sector TEXT,            -- setor (inglês, classificação da brapi)
+    subsector TEXT,         -- subsetor B3 (português)
+    sub_type TEXT,          -- stock | unit
+    logo TEXT,
+    source TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  ALTER TABLE quotes_daily ADD COLUMN change_pct REAL;
+  ALTER TABLE quotes_daily ADD COLUMN adj_close REAL;
+
+  -- Fator que converte share_counts para unidades (1 ou 1000...), conferido
+  -- contra o valor de mercado. NULL = ainda não conferido.
+  ALTER TABLE companies ADD COLUMN share_scale REAL;
+  ALTER TABLE companies ADD COLUMN share_scale_note TEXT;
+
+  -- Controle das buscas sob demanda por ticker (histórico, proventos)
+  CREATE TABLE ticker_fetches (
+    ticker TEXT NOT NULL,
+    kind TEXT NOT NULL,     -- history | dividends
+    fetched_at TEXT NOT NULL,
+    status TEXT NOT NULL,   -- ok | error
+    message TEXT,
+    PRIMARY KEY (ticker, kind)
+  );
+  `,
 ];
 
 /** Aplica as migrações pendentes. Retorna a versão final do esquema. */

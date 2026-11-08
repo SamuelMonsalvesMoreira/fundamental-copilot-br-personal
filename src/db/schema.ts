@@ -17,6 +17,8 @@ export const companies = sqliteTable("companies", {
   status: text("status"), // situação do registro
   layout: text("layout"), // standard | bank | insurance (formato das demonstrações)
   listingSegment: text("listing_segment"),
+  shareScale: real("share_scale"), // multiplica share_counts (CVM às vezes informa em milhares)
+  shareScaleNote: text("share_scale_note"),
   source: text("source").notNull(),
   updatedAt: text("updated_at").notNull(), // ISO
 });
@@ -43,6 +45,8 @@ export const quotesDaily = sqliteTable(
     close: real("close").notNull(),
     volume: real("volume"),
     marketCap: real("market_cap"),
+    changePct: real("change_pct"),
+    adjClose: real("adj_close"),
     source: text("source").notNull(),
     fetchedAt: text("fetched_at").notNull(),
   },
@@ -191,4 +195,29 @@ export const shareCounts = sqliteTable(
     treasuryTotal: real("treasury_total"),
   },
   (t) => [primaryKey({ columns: [t.cnpj, t.periodEnd] })],
+);
+
+/** Informações de mercado por ticker (lista diária da brapi). */
+export const marketInfo = sqliteTable("market_info", {
+  ticker: text("ticker").primaryKey(),
+  name: text("name"),
+  sector: text("sector"),
+  subsector: text("subsector"),
+  subType: text("sub_type"),
+  logo: text("logo"),
+  source: text("source").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/** Controle de buscas sob demanda (histórico/proventos) por ticker. */
+export const tickerFetches = sqliteTable(
+  "ticker_fetches",
+  {
+    ticker: text("ticker").notNull(),
+    kind: text("kind").notNull(),
+    fetchedAt: text("fetched_at").notNull(),
+    status: text("status").notNull(),
+    message: text("message"),
+  },
+  (t) => [primaryKey({ columns: [t.ticker, t.kind] })],
 );

@@ -77,3 +77,37 @@ export function getCoverageSummary(): CoverageSummary {
     )
     .get() as CoverageSummary;
 }
+
+export interface MarketSummary {
+  latestQuoteDate: string | null;
+  quotedTickers: number;
+  sharesVerified: number;
+  sharesInThousands: number;
+  sharesUnverified: number;
+  tokenConfigured: boolean;
+}
+
+export function getMarketSummary(): MarketSummary {
+  const q = sqlite
+    .prepare(
+      `SELECT MAX(date) AS d,
+              (SELECT COUNT(*) FROM quotes_daily WHERE date = (SELECT MAX(date) FROM quotes_daily WHERE source = 'brapi.dev')) AS n
+         FROM quotes_daily`,
+    )
+    .get() as { d: string | null; n: number };
+  const s = sqlite
+    .prepare(
+      `SELECT SUM(share_scale IS NOT NULL) AS ok, SUM(share_scale > 1) AS thousands,
+              SUM(share_scale IS NULL AND share_scale_note IS NOT NULL) AS bad
+         FROM companies`,
+    )
+    .get() as { ok: number | null; thousands: number | null; bad: number | null };
+  return {
+    latestQuoteDate: q.d,
+    quotedTickers: q.n,
+    sharesVerified: s.ok ?? 0,
+    sharesInThousands: s.thousands ?? 0,
+    sharesUnverified: s.bad ?? 0,
+    tokenConfigured: Boolean(process.env.BRAPI_TOKEN?.trim()),
+  };
+}

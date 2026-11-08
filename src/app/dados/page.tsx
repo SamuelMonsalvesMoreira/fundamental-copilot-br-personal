@@ -8,7 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
-import { getCoverageSummary, getLatestJobRuns, getSchemaVersion, getTableCounts } from "@/server/data-status";
+import { MacroStrip } from "@/components/common/macro-strip";
+import {
+  getCoverageSummary,
+  getLatestJobRuns,
+  getMarketSummary,
+  getSchemaVersion,
+  getTableCounts,
+} from "@/server/data-status";
+import { getMacroSnapshot } from "@/server/macro";
 
 export const metadata: Metadata = { title: "Dados e fontes" };
 
@@ -43,9 +51,33 @@ async function DataStatus() {
   const counts = getTableCounts();
   const schemaVersion = getSchemaVersion();
   const coverage = getCoverageSummary();
+  const market = getMarketSummary();
+  const macro = getMacroSnapshot();
 
   return (
     <div className="grid gap-6">
+      <MacroStrip values={macro} />
+      {market.latestQuoteDate && (
+        <p className="text-sm text-muted-foreground">
+          Cotações de <span className="num text-foreground">{formatNumber(market.quotedTickers, 0)}</span> ações no
+          pregão de <span className="num text-foreground">{formatDate(market.latestQuoteDate)}</span> (brapi.dev).
+          Quantidade de ações conferida contra o valor de mercado em{" "}
+          <span className="num text-foreground">{market.sharesVerified}</span> companhias (
+          {market.sharesInThousands} informam em milhares na CVM);{" "}
+          <span className="num text-foreground">{market.sharesUnverified}</span> não puderam ser conferidas e ficam sem
+          indicadores por ação.
+        </p>
+      )}
+      {!market.tokenConfigured && (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+          <p className="font-medium">Token da brapi não configurado</p>
+          <p className="mt-1 text-muted-foreground">
+            As cotações do dia funcionam sem token, mas o histórico de preços e os proventos de cada empresa precisam
+            do token gratuito. Crie em brapi.dev, coloque em <code className="font-mono">BRAPI_TOKEN</code> no arquivo{" "}
+            <code className="font-mono">.env.local</code> e reinicie o app.
+          </p>
+        </div>
+      )}
       {coverage.latestDfp && (
         <p className="text-sm text-muted-foreground">
           Demonstrações da CVM de <span className="num text-foreground">{formatDate(coverage.oldestDfp)}</span> até{" "}

@@ -52,6 +52,25 @@ As chaves ficam só no servidor e nunca devem ir para o Git (`.env.local` está 
 - **Linhas completas** (`statement_lines`): DFP de todos os anos e ITR dos 2 anos mais
   recentes (para a aba "Demonstrações").
 
+## Cotações e macro
+
+- **brapi.dev**: a lista diária de todas as ações (preço, variação, volume, valor de mercado,
+  subsetor) funciona **sem token**. Histórico e proventos por empresa precisam do token
+  gratuito (15 mil requisições/mês). O token vai no cabeçalho da requisição, nunca na URL.
+- **Banco Central (SGS)**: Selic meta (432), CDI (12, anualizado com 252 dias úteis),
+  IPCA mensal (433) e IPCA 12 meses (13522), desde 2010.
+- **Quantidade de ações**: a CVM não informa a escala da composição do capital e muitas
+  empresas declaram em milhares. O app compara com o valor de mercado da brapi e escolhe o
+  fator (1 ou 1.000). Se nada conferir, os indicadores por ação ficam indisponíveis em vez
+  de errados.
+
+### Agendamento no Windows (sem deixar o worker aberto)
+
+```powershell
+schtasks /create /tn "FundamentalCopilot Mercado" /sc weekly /d MON,TUE,WED,THU,FRI /st 19:30 /tr "cmd /c cd /d C:\caminho\do\projeto && npm run ingest:market"
+schtasks /create /tn "FundamentalCopilot CVM" /sc daily /st 07:00 /tr "cmd /c cd /d C:\caminho\do\projeto && npm run ingest:cvm -- --from 2025"
+```
+
 ## Estrutura
 
 ```
@@ -74,5 +93,9 @@ scripts/       comandos de linha (migração, coleta, agendador)
 | `npm run db:migrate` | cria/atualiza o banco local |
 | `npm run ingest:cvm` | baixa cadastro, tickers e DFP/ITR da CVM (~11 anos; só rebaixa o que mudou) |
 | `npm run ingest:cvm -- --from 2024 --force` | recoleta a partir de um ano, mesmo sem mudanças |
+| `npm run ingest:market` | Selic/CDI/IPCA (Banco Central) + cotações do dia (brapi) + conferência da quantidade de ações |
+| `npm run ingest:market -- --ticker WEGE3` | histórico de 10 anos e proventos de um ticker (exige `BRAPI_TOKEN`) |
+| `npm run worker` | agendador: mercado nos dias úteis às 19h30, CVM todo dia às 7h; recupera atrasos ao iniciar |
+| `npm run dev:all` | app + agendador juntos |
 | `npm test` | testes |
 | `npm run validate` | lint + tipos + testes + build (o mesmo que a CI) |
