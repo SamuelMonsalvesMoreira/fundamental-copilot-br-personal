@@ -94,6 +94,15 @@ describe("standardize — casos especiais", () => {
     expect(get(v, "netIncomeParent")?.value).toBe(42);
   });
 
+  it("aceita as variações de descrição do lucro (ex.: Bradesco)", () => {
+    const v = standardize([
+      base({ code: "3.11", name: "Lucro ou Prejuízo Líquido Consolidado do Período", value: 23.92 }),
+      base({ code: "3.11.01", name: "Atribuído aos Sócios da Empresa Controladora", value: 23.67 }),
+    ]);
+    expect(get(v, "netIncome")?.value).toBe(23.92);
+    expect(get(v, "netIncomeParent")).toMatchObject({ value: 23.67, origin: "3.11.01" });
+  });
+
   it("valor ausente não vira zero", () => {
     const v = standardize([base({ value: null })]);
     expect(get(v, "revenue")).toBeUndefined();

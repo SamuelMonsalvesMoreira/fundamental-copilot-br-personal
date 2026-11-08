@@ -125,6 +125,8 @@ const CAPEX_EXCLUDE_RE =
   /(venda|vendas|alienac|recebimento|recebid|baixa|resgate|controlad|coligad|participac|combinac|dividend|juros|emprestimo)/;
 const DIVIDENDS_RE = /(dividend|juros sobre (o )?capital|jscp|jcp)/;
 const DIVIDENDS_EXCLUDE_RE = /(recebid|recebimento)/;
+const NET_INCOME_RE = /^lucro( ou |\/)prejuizo (liquido )?(consolidado )?do periodo$/;
+const PARENT_RE = /^atribuido (a|aos) socios da empresa controladora/;
 const DA_RE = /(deprecia|amortiza|exaust)/;
 const DA_EXCLUDE_RE = /(custo|agio|desagio|emprestimo|financiamento|debenture|juros|captac|ajuste a valor)/;
 
@@ -179,10 +181,12 @@ export function standardize(lines: StatementLine[], layout: Layout = detectLayou
       pushLine("pretaxIncome", f.find(startsWith("resultado antes dos tributos sobre o lucro"), { depth: 1 }));
       pushLine("incomeTax", f.find(startsWith("imposto de renda e contribuicao social sobre o lucro"), { depth: 1 }));
 
-      const net = f.find((n) => /^lucro\/prejuizo (consolidado )?do periodo$/.test(n), { depth: 1 });
+      // Variações reais: "Lucro/Prejuízo Consolidado do Período", "Lucro/Prejuízo do Período",
+      // "Lucro ou Prejuízo Líquido (Consolidado) do Período" (Bradesco e outros).
+      const net = f.find((n) => NET_INCOME_RE.test(n), { depth: 1 });
       pushLine("netIncome", net);
       if (net) {
-        const parent = f.find(startsWith("atribuido a socios da empresa controladora"), { parent: net.code });
+        const parent = f.find((n) => PARENT_RE.test(n), { parent: net.code });
         if (parent) pushLine("netIncomeParent", parent);
         else pushLine("netIncomeParent", net); // demonstração individual: tudo é da controladora
       }

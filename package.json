@@ -16,7 +16,8 @@
     "ingest:cvm": "tsx scripts/ingest-cvm.ts",
     "ingest:market": "tsx scripts/ingest-market.ts",
     "worker": "tsx scripts/worker.ts",
-    "dev:all": "concurrently -k -n app,worker -c blue,magenta \"next dev\" \"tsx scripts/worker.ts\""
+    "dev:all": "concurrently -k -n app,worker -c blue,magenta \"next dev\" \"tsx scripts/worker.ts\"",
+    "show": "tsx scripts/show-company.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

@@ -71,6 +71,47 @@ schtasks /create /tn "FundamentalCopilot Mercado" /sc weekly /d MON,TUE,WED,THU,
 schtasks /create /tn "FundamentalCopilot CVM" /sc daily /st 07:00 /tr "cmd /c cd /d C:\caminho\do\projeto && npm run ingest:cvm -- --from 2025"
 ```
 
+## Como os indicadores são calculados
+
+Código em `src/analytics` (funções puras). Cada indicador guarda a fórmula, as entradas,
+o período e a fonte. Quando não dá para calcular, explica por quê (nunca mostra zero no lugar).
+
+- **Períodos**: resultado e caixa nos **últimos 12 meses** (TTM = acumulado do ano +
+  último exercício − mesmo acumulado do ano anterior; ex.: 9M26 + 2025 − 9M25).
+  Balanço na data do último documento. Médias usam o mesmo mês do ano anterior.
+- **Lucro** = atribuído aos controladores. **EBITDA** = EBIT + depreciação/amortização
+  (sem ajustes; empresas costumam divulgar EBITDA "ajustado", que pode diferir).
+- **Dívida líquida** = empréstimos e financiamentos (CP + LP) − caixa − aplicações de CP.
+- **Valor de mercado** = ações em circulação × preço de cada classe (ON/PN).
+  **EV** = valor de mercado + dívida líquida + minoritários.
+
+| Indicador | Fórmula |
+|---|---|
+| P/L | valor de mercado ÷ lucro 12m |
+| P/VP | valor de mercado ÷ PL dos controladores |
+| EV/EBITDA | EV ÷ EBITDA 12m |
+| ROE | lucro 12m ÷ PL médio |
+| ROIC | EBIT × (1 − alíquota efetiva, 0–34%) ÷ (PL + dívida líquida) médio |
+| Margens | lucro bruto, EBITDA, EBIT e lucro ÷ receita líquida |
+| Dívida líquida/EBITDA | dívida líquida ÷ EBITDA 12m |
+| Dividend yield | proventos por ação com data ex nos últimos 12 meses ÷ preço (sem token da brapi: dividendos pagos na DFC ÷ valor de mercado) |
+| Payout | dividendos pagos (DFC, 12m) ÷ lucro 12m |
+| CAGR 5 anos | (último exercício ÷ exercício de 5 anos antes)^(1/5) − 1 |
+
+Para **bancos e seguradoras**, indicadores baseados em EBITDA, dívida, margem bruta e ROIC
+aparecem como "não se aplica".
+
+**Valuation** (modelos de estudo, não são preço-alvo):
+- **Graham**: √(22,5 × LPA × VPA).
+- **Bazin**: dividendos por ação (média dos últimos 3 anos) ÷ rendimento mínimo (padrão 6%).
+- **DCF**: FCF base (média de 3 anos de caixa operacional − capex) cresce por N anos, mais
+  perpetuidade, descontados; menos dívida líquida e minoritários; ÷ ações. Premissas padrão:
+  crescimento = CAGR de receita (0–12%), perpetuidade = IPCA 12m (2–6%), desconto = Selic + 3 p.p.
+  Todas editáveis.
+
+**Conferência**: `src/analytics/published.test.ts` compara os cálculos com números
+publicados por WEG, Petrobras e Itaú em 2025, explicando as diferenças de metodologia.
+
 ## Estrutura
 
 ```

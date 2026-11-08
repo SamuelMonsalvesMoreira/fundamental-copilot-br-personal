@@ -188,6 +188,32 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (ticker, kind)
   );
   `,
+
+  // 4 — indicadores calculados por companhia (pares, screener, comparador)
+  `
+  CREATE TABLE company_snapshots (
+    cnpj TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,          -- ticker principal (mais negociado)
+    name TEXT NOT NULL,
+    sector TEXT NOT NULL,
+    sector_key TEXT NOT NULL,
+    layout TEXT,
+    price REAL,
+    price_date TEXT,
+    financials_end TEXT,
+    market_cap REAL,
+    volume REAL,
+    pl REAL, pvp REAL, ev_ebitda REAL, psr REAL,
+    roe REAL, roic REAL, roa REAL,
+    gross_margin REAL, ebitda_margin REAL, net_margin REAL,
+    net_debt_ebitda REAL, current_ratio REAL,
+    dy REAL, payout REAL,
+    revenue_cagr5y REAL, earnings_cagr5y REAL,
+    revenue_ttm REAL, net_income_ttm REAL,
+    computed_at TEXT NOT NULL
+  );
+  CREATE INDEX company_snapshots_sector_idx ON company_snapshots (sector_key);
+  `,
 ];
 
 /** Aplica as migrações pendentes. Retorna a versão final do esquema. */

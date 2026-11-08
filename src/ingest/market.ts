@@ -6,6 +6,7 @@ import type Database from "better-sqlite3";
 import { ingestMacro } from "./bcb";
 import { ensureTickerHistory, hasBrapiToken, ingestQuoteList } from "./brapi";
 import { resolveShareScales } from "./share-scale";
+import { refreshSnapshots } from "./snapshots";
 
 export async function ingestDailyMarket(sqlite: Database.Database, opts: { log?: (m: string) => void; fullMacro?: boolean } = {}) {
   const log = opts.log ?? (() => {});
@@ -38,5 +39,9 @@ export async function ingestDailyMarket(sqlite: Database.Database, opts: { log?:
   } else {
     log("BRAPI_TOKEN não configurado: histórico e proventos por ticker não serão atualizados.");
   }
+  await step("Indicadores", async () => {
+    const r = refreshSnapshots(sqlite);
+    log(`Indicadores recalculados para ${r.count} companhias.`);
+  });
   return { errors };
 }

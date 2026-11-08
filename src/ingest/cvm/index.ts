@@ -17,6 +17,7 @@ import { parseCadastro, parseFcaTickers, type TickerRow } from "./registry";
 import { detectLayout, standardize } from "./standardize";
 import { parsePackage, type CvmDoc } from "./statements";
 import { CVM_SOURCE, cvmUrls } from "./urls";
+import { refreshSnapshots } from "../snapshots";
 
 type Log = (msg: string) => void;
 
@@ -229,5 +230,7 @@ export async function ingestCvm(sqlite: Database.Database, opts: FullOptions = {
       }
     }
   }
+  const snap = refreshSnapshots(sqlite);
+  opts.log?.(`Indicadores recalculados para ${snap.count} companhias.`);
   return { errors };
 }
