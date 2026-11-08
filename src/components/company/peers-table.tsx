@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemo } from "@/lib/demo";
 import Link from "next/link";
 import { useTransition } from "react";
 import { RotateCcwIcon, XIcon } from "lucide-react";
@@ -61,6 +62,7 @@ export function PeersTable({ group, current, sector, history }: { group: PeerGro
       <section className="grid grid-cols-1 gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className={cn("rounded-md border px-2 py-0.5 text-xs font-medium", QUALITY[quality].cls)}>{QUALITY[quality].label}</span>
+          {!isDemo && (
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="w-64 max-w-full">
               <TickerSearch onSelect={add} placeholder="Adicionar empresa ao grupo…" />
@@ -71,6 +73,7 @@ export function PeersTable({ group, current, sector, history }: { group: PeerGro
               </Button>
             )}
           </div>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{note}</p>
 
@@ -100,7 +103,7 @@ export function PeersTable({ group, current, sector, history }: { group: PeerGro
                       return <td key={c.key} className={cn("num px-3 py-2 text-right", v === null && "text-muted-foreground")}>{v === null ? MISSING : c.fmt(v)}</td>;
                     })}
                     <td className="px-1 text-center">
-                      {p.ticker !== current && (
+                      {p.ticker !== current && !isDemo && (
                         <Button variant="ghost" size="icon-xs" disabled={pending} onClick={() => remove(p)} aria-label={`Retirar ${p.ticker} do grupo`}>
                           <XIcon />
                         </Button>

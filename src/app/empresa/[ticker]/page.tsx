@@ -15,6 +15,7 @@ import { CompanyPageSkeleton } from "@/components/company/skeleton";
 import { CopilotChat } from "@/components/copilot/chat";
 import { hasApiKey } from "@/ai/agent";
 import { buildProjectionContext } from "@/server/projections";
+import { isDemo } from "@/lib/demo";
 import { formatCompactCurrency, formatDate } from "@/lib/format";
 import { getCompanyPage, getStatements, type CompanyPageData } from "@/server/company";
 
@@ -53,7 +54,7 @@ async function Company({ params }: { params: PageProps<"/empresa/[ticker]">["par
           { value: "valuation", label: "Valuation", content: <ValuationPanel v={data.valuation} ticker={data.ticker} /> },
           { value: "projecoes", label: "Projeções", content: <ProjectionsPanel ctx={projection} /> },
           { value: "pares", label: "Pares", content: <PeersTable group={data.peerGroup} current={data.ticker} sector={data.meta.sector} history={data.ownHistory} /> },
-          { value: "copiloto", label: "Copiloto", content: <CopilotChat ticker={data.ticker} enabled={aiEnabled} isFinancial={isFinancial} /> },
+          ...(isDemo ? [] : [{ value: "copiloto", label: "Copiloto", content: <CopilotChat ticker={data.ticker} enabled={aiEnabled} isFinancial={isFinancial} /> }]),
           { value: "relatorio", label: "Relatório", content: <AutoReport data={data} ctx={projection} /> },
         ]}
       />

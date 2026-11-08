@@ -1,3 +1,4 @@
+import { isDemo } from "@/lib/demo";
 import Link from "next/link";
 import { GitCompareArrowsIcon } from "lucide-react";
 import { WatchButton } from "@/components/portfolio/portfolio-client";
@@ -77,7 +78,7 @@ export function CompanyHeader({ data }: { data: CompanyPageData }) {
           <p className="text-sm text-muted-foreground">Sem cotação disponível para {ticker}.</p>
         )}
         <div className="mt-3 flex gap-2 sm:justify-end print:hidden">
-          <WatchButton ticker={ticker} watched={data.watched} />
+          {!isDemo && <WatchButton ticker={ticker} watched={data.watched} />}
           {comparePeers.length > 1 && (
             <Link href={`/comparar?t=${comparePeers.join(",")}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
               <GitCompareArrowsIcon /> Comparar com pares

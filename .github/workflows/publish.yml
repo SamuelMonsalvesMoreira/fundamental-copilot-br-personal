@@ -1,0 +1,67 @@
+name: Publicar site
+
+# Todo dia útil, depois do fechamento da bolsa: atualiza os dados e republica.
+on:
+  schedule:
+    - cron: "30 23 * * 1-5" # 20h30 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: publicar
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Baixar a base de dados
+        run: |
+          mkdir -p data
+          gh release download base-de-dados --pattern seed.db.gz --dir data
+          gunzip -f data/seed.db.gz
+
+      - name: Atualizar preços, juros e indicadores
+        run: npm run ingest:market
+        env:
+          DATABASE_PATH: data/seed.db
+
+      - name: Atualizar balanços da CVM (segundas-feiras)
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then
+            npm run ingest:cvm -- --from "$(( $(date -u +%Y) - 1 ))"
+            npm run ingest:market
+          fi
+        env:
+          DATABASE_PATH: data/seed.db
+
+      - name: Gerar o banco do site
+        run: npm run public:db -- site
+        env:
+          DATABASE_PATH: data/seed.db
+
+      - name: Guardar a base atualizada
+        run: |
+          gzip -c data/seed.db > seed.db.gz
+          gh release upload base-de-dados seed.db.gz --clobber
+
+      - name: Publicar na Vercel
+        run: |
+          npx vercel@latest project add fundamental-copilot-br --token="$VERCEL_TOKEN" || true
+          npx vercel@latest link --yes --project fundamental-copilot-br --token="$VERCEL_TOKEN"
+          npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          NEXT_PUBLIC_DEMO_MODE=1 npx vercel@latest build --prod --token="$VERCEL_TOKEN"
+          npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

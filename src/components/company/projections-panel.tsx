@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemo } from "@/lib/demo";
 import { useMemo, useState, useTransition } from "react";
 import { Bar, CartesianGrid, ComposedChart, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FlaskConicalIcon, RotateCcwIcon, SaveIcon, Trash2Icon } from "lucide-react";
@@ -143,9 +144,11 @@ export function ProjectionsPanel({ ctx }: { ctx: ProjectionContext }) {
             <NumberInput label="P/L no último ano (0 = não estimar preço)" value={a.exitPl ?? 0} step={0.5} onChange={(n) => set("exitPl")(n > 0 ? Math.min(200, n) : null)} suffix="x" hint={ctx.notes.exitPl} />
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-1">
+            {!isDemo && (
             <Button size="sm" onClick={save} disabled={pending || (!dirty && ctx.saved !== null)}>
               <SaveIcon /> Salvar projeção
             </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setA(ctx.defaults)} disabled={pending}>
               <RotateCcwIcon /> Premissas padrão
             </Button>

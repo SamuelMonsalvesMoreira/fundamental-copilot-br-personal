@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { isDemo } from "@/lib/demo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -14,6 +16,7 @@ import { listSavedProjections } from "@/server/projections";
 export const metadata: Metadata = { title: "Projeções" };
 
 export default function ProjecoesPage() {
+  if (isDemo) notFound();
   return (
     <>
       <PageHeader

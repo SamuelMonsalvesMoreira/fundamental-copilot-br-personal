@@ -4,11 +4,13 @@ import { refresh } from "next/cache";
 import { sqlite } from "@/db/client";
 import { validatePosition } from "@/analytics/portfolio";
 import { ensureTickerHistory } from "@/ingest/history";
+import { isDemo } from "@/lib/demo";
 import { tickerExists } from "./portfolio";
 
 const clean = (t: unknown) => String(t ?? "").trim().toUpperCase();
 
 export async function toggleWatchlist(ticker: string): Promise<{ watched: boolean; error?: string }> {
+  if (isDemo) return { watched: false, error: "Indisponível no site público." };
   const t = clean(ticker);
   if (!tickerExists(t)) return { watched: false, error: "Ticker não encontrado." };
   const exists = sqlite.prepare(`SELECT 1 FROM watchlist WHERE ticker = ?`).get(t);

@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemo } from "@/lib/demo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TickerSearch } from "@/components/search/ticker-search";
@@ -10,8 +11,7 @@ export const NAV_ITEMS = [
   { href: "/panorama", label: "Panorama" },
   { href: "/screener", label: "Screener" },
   { href: "/comparar", label: "Comparar" },
-  { href: "/projecoes", label: "Projeções" },
-  { href: "/carteira", label: "Carteira" },
+  ...(isDemo ? [] : [{ href: "/projecoes", label: "Projeções" }, { href: "/carteira", label: "Carteira" }]),
   { href: "/dados", label: "Dados" },
 ] as const;
 

@@ -6,6 +6,7 @@ import { averageAnnualDividends, defaultDcfAssumptions, graham, type DcfDefaults
 import { ownHistory, type OwnHistory, type PeerGroup } from "@/analytics/peers";
 import { analyzeByCnpj, findTicker, loadCompanyMeta, loadPeerGroup, type CompanyMeta, type PeerRow } from "@/data/company-data";
 import { ensureTickerHistory } from "@/ingest/history";
+import { isDemo } from "@/lib/demo";
 import { getMacroSnapshot } from "./macro";
 import { isWatched } from "./portfolio";
 
@@ -179,7 +180,7 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
 
   // Histórico/proventos sob demanda (cache de 24 h). Sem token, falha rápido e registra.
   let historyMessage: string | null = null;
-  try {
+  if (!isDemo) try {
     await ensureTickerHistory(sqlite, ref.ticker);
   } catch (err) {
     historyMessage = err instanceof Error ? err.message : String(err);

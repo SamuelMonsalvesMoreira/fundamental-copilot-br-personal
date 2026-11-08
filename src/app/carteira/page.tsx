@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { isDemo } from "@/lib/demo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -12,6 +14,7 @@ import { getPortfolio, getWatchlist } from "@/server/portfolio";
 export const metadata: Metadata = { title: "Carteira" };
 
 export default function CarteiraPage() {
+  if (isDemo) notFound();
   return (
     <>
       <PageHeader title="Carteira e watchlist" description="Empresas que você acompanha e suas posições, com cotações do último pregão." />

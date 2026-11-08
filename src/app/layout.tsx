@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { ThemeProvider } from "@/components/layout/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { isDemo } from "@/lib/demo";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-muted-foreground sm:px-6">
                 Ferramenta de estudo. As informações e análises exibidas não constituem recomendação de
                 investimento. Dados: CVM Dados Abertos, Banco Central do Brasil (SGS), brapi.dev e Yahoo Finance.
+                {isDemo && " Projeto pessoal de estudo; os preços têm até um dia útil de atraso."}
               </div>
             </footer>
             <Toaster />

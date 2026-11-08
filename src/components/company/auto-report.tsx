@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemo } from "@/lib/demo";
 import { useMemo, useState, useTransition } from "react";
 import { Bar, CartesianGrid, ComposedChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { CheckCircle2Icon, CircleAlertIcon, CircleIcon, FileDownIcon, SaveIcon } from "lucide-react";
@@ -96,9 +97,11 @@ export function AutoReport({ data, ctx }: { data: CompanyPageData; ctx: Projecti
             <p className="text-xs text-muted-foreground">Coloque o lucro que você espera; o relatório recalcula na hora. Opcional.</p>
           </div>
           <div className="flex gap-2">
+            {!isDemo && (
             <Button variant="outline" size="sm" onClick={save} disabled={pending || (estimateMi === null && !ctx.saved)}>
               <SaveIcon /> Salvar estimativa
             </Button>
+            )}
             <Button size="sm" onClick={exportPdf}>
               <FileDownIcon /> Exportar PDF
             </Button>
