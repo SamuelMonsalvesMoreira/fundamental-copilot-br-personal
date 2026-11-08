@@ -7,7 +7,7 @@ export function getPanorama() {
   const rows = sqlite
     .prepare(
       `SELECT ticker, name, sector, market_cap AS marketCap, price * volume AS liquidity, pl, pvp, roe, dy,
-              net_debt_ebitda AS netDebtEbitda, price_date AS priceDate, financials_end AS financialsEnd
+              net_debt_ebitda AS netDebtEbitda, net_income_ttm AS netIncome, price_date AS priceDate, financials_end AS financialsEnd
          FROM company_snapshots
         WHERE price IS NOT NULL AND market_cap IS NOT NULL
         ORDER BY market_cap DESC`,
@@ -15,5 +15,5 @@ export function getPanorama() {
     .all() as MarketRow[];
   const macro = getMacroSnapshot();
   const selic = macro.find((m) => m.key === "selic")?.value ?? null;
-  return { overview: buildOverview(rows, selic), macro, selic };
+  return { overview: buildOverview(rows, selic), rows, macro, selic };
 }

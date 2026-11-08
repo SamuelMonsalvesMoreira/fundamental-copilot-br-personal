@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { SourceNote } from "@/components/common/source-note";
 import { EmptyState } from "@/components/common/states";
 import { CompaniesTable } from "@/components/panorama/companies-table";
+import { ProfitSimulator } from "@/components/panorama/profit-simulator";
 import { PanoramaScatter } from "@/components/panorama/scatter-chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCompactCurrency, formatMultiple, formatPercent } from "@/lib/format";
@@ -35,7 +36,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 
 async function Content() {
   await connection();
-  const { overview: o, macro, selic } = getPanorama();
+  const { overview: o, rows, macro, selic } = getPanorama();
   if (o.all === 0) {
     return <EmptyState title="Ainda sem dados de mercado" description="Rode npm run setup para fazer a primeira coleta." />;
   }
@@ -88,6 +89,14 @@ async function Content() {
           </ul>
         </section>
       </div>
+
+      <section id="simulador" className="grid grid-cols-1 gap-2">
+        <div>
+          <h2 className="text-sm font-medium">Simulador de lucro</h2>
+          <p className="text-xs text-muted-foreground">Coloque o lucro que você espera e veja como ficam o P/L e o ROE no próximo ano.</p>
+        </div>
+        <ProfitSimulator rows={rows} liquid={o.liquid} selic={selic} />
+      </section>
 
       <section className="grid grid-cols-1 gap-2">
         <h2 className="text-sm font-medium">Empresas líquidas</h2>

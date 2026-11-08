@@ -11,7 +11,7 @@ números do banco local.
 
 - **Busca** por ticker ou nome, com autocomplete.
 - **Página da empresa:** indicadores com fórmula e fonte, gráficos de até 10 anos, demonstrações,
-  valuation (Graham, Bazin e DCF editável), projeções, pares do setor, chat com IA e relatório.
+  valuation (Graham, Bazin e DCF editável), projeções, pares do setor, chat com IA e relatório automático.
 - **Screener** com filtros, **comparador** de 2 a 4 empresas e **carteira/watchlist**.
 - **Dados** (`/dados`): quando cada fonte foi coletada e se houve erro.
 
@@ -57,12 +57,11 @@ se quiser só o app.
 | Variável | Obrigatória? | Para quê | Onde obter |
 |---|---|---|---|
 | `BRAPI_TOKEN` | Não | Reserva caso o Yahoo Finance falhe (plano gratuito) | https://brapi.dev/dashboard |
-| `ANTHROPIC_API_KEY` | Só para a IA | Abas Copiloto e Relatório (uso pago por consumo) | https://console.anthropic.com/ |
+| `ANTHROPIC_API_KEY` | Só para a IA | Aba Copiloto (uso pago por consumo) | https://console.anthropic.com/ |
 | `CLAUDE_CHAT_MODEL` | Não | Modelo do chat (padrão `claude-sonnet-5-5`) | |
-| `CLAUDE_REPORT_MODEL` | Não | Modelo do relatório (padrão `claude-opus-5-5`) | |
 | `DATABASE_PATH` | Não | Caminho do SQLite (padrão `data/app.db`) | |
 
-Sem nenhuma chave, o app funciona por inteiro, exceto o chat com IA e o relatório com IA:
+Sem nenhuma chave, o app funciona por inteiro, exceto o chat com IA:
 balanços, indicadores, histórico de preços, proventos, screener, comparador, carteira, projeções
 e relatório automático em PDF.
 
@@ -163,6 +162,9 @@ dividend yield, gráfico de preço por rentabilidade, maiores setores e tabela c
 banco local e não usa IA. Inicie com `npm run dev:all` para o agendador recuperar coletas atrasadas
 assim que o app abre; só com `npm run dev` os dados não são atualizados.
 
+O **simulador de lucro** recebe o lucro que você espera para o próximo ano e mostra P/L e ROE projetados,
+com o antes e o depois no gráfico. As estimativas ficam só no seu navegador.
+
 ## Pares
 
 O grupo automático usa empresas do mesmo setor com porte de até 10× para mais ou para menos, liquidez
@@ -188,7 +190,7 @@ Aba **Projeções** na página da empresa e página `/projecoes` com todas as sa
 
 ## Copiloto com IA (Claude)
 
-Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de
+Aba **Copiloto** (chat) na página de cada empresa. Precisa de
 `ANTHROPIC_API_KEY` no `.env.local`; sem ela, as abas explicam como ativar.
 
 - **A IA não "lembra" números.** Ela chama ferramentas (`src/ai/tools.ts`) que leem o banco
@@ -199,12 +201,7 @@ Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de
   devolveram (`src/ai/verify.ts`). O que não bate aparece marcado como "não verificado".
 - **Regras do prompt** (`src/ai/prompts.ts`): citar período e fonte, dizer quando um dado falta ou
   não se aplica, não recomendar compra/venda e terminar com o aviso de que não é recomendação.
-- **Modelos:** chat com `claude-sonnet-5-5` (esforço médio) e relatório com `claude-opus-5-5`
-  (esforço alto), configuráveis por `CLAUDE_CHAT_MODEL` / `CLAUDE_REPORT_MODEL`. Usa fallback do
-  servidor (`fallbacks: "default"`) se um modelo recusar, e cache do prompt (ferramentas + regras).
-- **Relatórios** ficam salvos na tabela `ai_reports` com a data dos dados usados.
-- `npm run check:ai-tools -- WEGE3` executa todas as ferramentas sem chamar a API, para ver o que a
-  IA recebe.
+- **Modelo:** chat com `claude-sonnet-5-5`, configurável por `CLAUDE_CHAT_MODEL`.
 
 ## Limitações conhecidas
 

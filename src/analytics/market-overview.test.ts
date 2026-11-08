@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOverview, type MarketRow } from "./market-overview";
+import { buildOverview, simulateProfit, type MarketRow } from "./market-overview";
 
 const row = (ticker: string, marketCap: number, over: Partial<MarketRow> = {}): MarketRow => ({
   ticker,
@@ -12,9 +12,35 @@ const row = (ticker: string, marketCap: number, over: Partial<MarketRow> = {}): 
   roe: 0.2,
   dy: 0.05,
   netDebtEbitda: 1,
+  netIncome: 10,
   priceDate: "2026-11-06",
   financialsEnd: "2026-09-30",
   ...over,
+});
+
+describe("simulador de lucro", () => {
+  const base = { marketCap: 1000, pvp: 2, netIncome: 100 };
+
+  it("calcula P/L e ROE com o lucro estimado", () => {
+    const s = simulateProfit(base, 125);
+    expect(s.plForward).toBe(8);
+    expect(s.roeForward).toBe(0.25);
+    expect(s.growth).toBeCloseTo(0.25);
+  });
+
+  it("prejuízo estimado não tem P/L, mas tem ROE", () => {
+    const s = simulateProfit(base, -50);
+    expect(s.plForward).toBeNull();
+    expect(s.roeForward).toBe(-0.1);
+  });
+
+  it("sem base de comparação, não inventa", () => {
+    const s = simulateProfit({ marketCap: 1000, pvp: -1, netIncome: -20 }, 100);
+    expect(s.growth).toBeNull();
+    expect(s.roeForward).toBeNull();
+    expect(s.plForward).toBe(10);
+    expect(simulateProfit(base, null)).toEqual({ growth: null, plForward: null, roeForward: null });
+  });
 });
 
 describe("panorama do mercado", () => {

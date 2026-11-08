@@ -30,33 +30,6 @@ export const CHAT_SYSTEM = `${BASE_RULES}
 
 Contexto: o usuário está na página de uma empresa e fará perguntas sobre ela. A empresa em foco é informada no bloco seguinte. Se a pergunta for sobre outra empresa, use "buscar_empresa" e as demais ferramentas com o ticker dela.`;
 
-export const REPORT_SYSTEM = `${BASE_RULES}
-
-Tarefa: escrever um relatório de análise fundamentalista completo da empresa informada no bloco seguinte, em markdown, com estas seções nesta ordem:
-
-## Resumo
-3 a 5 frases com a visão geral: o que a empresa é, tamanho, momento atual dos resultados e da avaliação de mercado.
-
-## Pontos fortes
-Lista de 3 a 6 itens, cada um sustentado por números.
-
-## Riscos e pontos de atenção
-Lista de 3 a 6 itens, cada um sustentado por números ou por lacunas nos dados.
-
-## Tendências
-Evolução de receita, margens, lucro, endividamento e geração de caixa nos últimos anos e trimestres, indicando direção e intensidade.
-
-## Comparação com pares
-Como os múltiplos e a rentabilidade se comparam à mediana do setor. Se houver poucos pares, diga isso.
-
-## Valuation
-Resultados de Graham, Bazin e DCF com as premissas usadas e uma frase sobre a sensibilidade. Lembre que são modelos simplificados.
-
-## Dados ausentes ou limitações
-O que não foi possível avaliar e por quê.
-
-Antes de escrever, consulte pelo menos: resumo_empresa, indicadores, historico_financeiro (anual e trimestral), pares_setor, dividendos, valuation e macro. Não pergunte nada ao usuário: escreva o relatório completo.`;
-
 export function contextBlock(ticker: string, today: string): string {
   return `Empresa em foco: ${ticker}. Data de hoje: ${today}.`;
 }

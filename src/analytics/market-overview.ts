@@ -12,6 +12,8 @@ export interface MarketRow {
   roe: number | null;
   dy: number | null;
   netDebtEbitda: number | null;
+  /** lucro dos últimos 12 meses */
+  netIncome: number | null;
   priceDate: string | null;
   financialsEnd: string | null;
 }
@@ -42,6 +44,23 @@ export interface MarketOverview {
 const nonNull = (xs: Array<number | null>) => xs.filter((v): v is number => v !== null);
 const positive = (xs: Array<number | null>) => nonNull(xs).filter((v) => v > 0);
 const latest = (xs: Array<string | null>) => xs.filter((d): d is string => Boolean(d)).sort().at(-1) ?? null;
+
+export interface ProfitSimulation {
+  growth: number | null;
+  plForward: number | null;
+  roeForward: number | null;
+}
+
+/** P/L e ROE com o lucro estimado, mantendo o preço e o patrimônio de hoje. */
+export function simulateProfit(row: Pick<MarketRow, "marketCap" | "pvp" | "netIncome">, estimate: number | null): ProfitSimulation {
+  if (estimate === null) return { growth: null, plForward: null, roeForward: null };
+  const equity = row.pvp !== null && row.pvp > 0 ? row.marketCap / row.pvp : null;
+  return {
+    growth: row.netIncome !== null && row.netIncome > 0 ? estimate / row.netIncome - 1 : null,
+    plForward: estimate > 0 ? row.marketCap / estimate : null,
+    roeForward: equity !== null ? estimate / equity : null,
+  };
+}
 
 export function buildOverview(rows: MarketRow[], selic: number | null): MarketOverview {
   const minLiquidity = PEER_RULES.minLiquidity;

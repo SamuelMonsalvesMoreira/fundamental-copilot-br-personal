@@ -56,7 +56,6 @@ export function getClient(): Anthropic {
 export const hasApiKey = () => Boolean(process.env.ANTHROPIC_API_KEY?.trim() || process.env.ANTHROPIC_AUTH_TOKEN?.trim());
 
 export const CHAT_MODEL = () => process.env.CLAUDE_CHAT_MODEL?.trim() || "claude-sonnet-5-5";
-export const REPORT_MODEL = () => process.env.CLAUDE_REPORT_MODEL?.trim() || "claude-opus-5-5";
 
 export async function runAgent(opts: AgentOptions): Promise<{ text: string; verification: Verification; trace: ToolTraceEntry[] } | null> {
   const create =
