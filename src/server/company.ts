@@ -6,6 +6,7 @@ import { averageAnnualDividends, defaultDcfAssumptions, graham, type DcfDefaults
 import { analyzeByCnpj, findTicker, loadCompanyMeta, loadPeers, type CompanyMeta, type PeerRow } from "@/data/company-data";
 import { ensureTickerHistory, hasBrapiToken } from "@/ingest/brapi";
 import { getMacroSnapshot } from "./macro";
+import { isWatched } from "./portfolio";
 
 export interface SeriesPoint {
   label: string; // "2025" ou "3T26"
@@ -59,12 +60,13 @@ export interface CompanyPageData {
   peers: PeerRow[];
   macroDate: string | null;
   historyStatus: { tokenConfigured: boolean; message: string | null };
+  watched: boolean;
 }
 
 const n = (v: number | undefined) => (v === undefined || !Number.isFinite(v) ? null : v);
 const ratio = (a: number | undefined, b: number | undefined) => (a !== undefined && b !== undefined && b > 0 ? a / b : null);
 
-function toPoint(label: string, end: string, v: MetricMap): SeriesPoint {
+export function toPoint(label: string, end: string, v: MetricMap): SeriesPoint {
   const ebitda = ebitdaOf(v);
   const { netDebt } = debtOf(v);
   const fcf = v.operatingCashFlow !== undefined && v.capex !== undefined ? v.operatingCashFlow - v.capex : undefined;
@@ -254,6 +256,7 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
     peers: loadPeers(sqlite, ref.cnpj, 10),
     macroDate: macro[0]?.date ?? null,
     historyStatus: { tokenConfigured: hasBrapiToken(), message: historyMessage },
+    watched: isWatched(ref.ticker),
   };
 }
 

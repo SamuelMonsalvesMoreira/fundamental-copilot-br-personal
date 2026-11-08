@@ -25,7 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <TooltipProvider>
             <AppHeader />
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">{children}</main>
+            <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-8 sm:px-6">{children}</main>
             <footer className="border-t">
               <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-muted-foreground sm:px-6">
                 Ferramenta de estudo. As informações e análises exibidas não constituem recomendação de

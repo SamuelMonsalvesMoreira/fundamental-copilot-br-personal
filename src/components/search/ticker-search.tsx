@@ -18,7 +18,20 @@ interface Result {
  * Busca por ticker ou nome com autocomplete.
  * Teclado: ↑/↓ navegam, Enter abre, Esc fecha. Atalho global: "/" ou Ctrl+K.
  */
-export function TickerSearch({ size = "default", autoFocus = false, className }: { size?: "default" | "lg"; autoFocus?: boolean; className?: string }) {
+export function TickerSearch({
+  size = "default",
+  autoFocus = false,
+  className,
+  onSelect,
+  placeholder,
+}: {
+  size?: "default" | "lg";
+  autoFocus?: boolean;
+  className?: string;
+  /** se informado, chama em vez de abrir a página da empresa */
+  onSelect?: (ticker: string) => void;
+  placeholder?: string;
+}) {
   const router = useRouter();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,20 +72,21 @@ export function TickerSearch({ size = "default", autoFocus = false, className }:
     const onKey = (e: KeyboardEvent) => {
       const typing = e.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(e.target.tagName);
       if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey))) {
-        if (size !== "default") return; // só o campo do cabeçalho responde ao atalho
+        if (size !== "default" || onSelect) return; // só o campo do cabeçalho responde ao atalho
         e.preventDefault();
         inputRef.current?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [size]);
+  }, [size, onSelect]);
 
   const go = (ticker: string) => {
     setOpen(false);
     setQ("");
     inputRef.current?.blur();
-    router.push(`/empresa/${ticker}`);
+    if (onSelect) onSelect(ticker);
+    else router.push(`/empresa/${ticker}`);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -114,7 +128,7 @@ export function TickerSearch({ size = "default", autoFocus = false, className }:
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={onKeyDown}
-          placeholder={size === "lg" ? "Busque um ticker ou empresa: PETR4, ITUB4, WEG…" : "Buscar ticker…"}
+          placeholder={placeholder ?? (size === "lg" ? "Busque um ticker ou empresa: PETR4, ITUB4, WEG…" : "Buscar ticker…")}
           className={cn("w-full bg-transparent outline-none placeholder:text-muted-foreground", size === "lg" ? "text-base" : "text-sm")}
           role="combobox"
           aria-expanded={showList}

@@ -59,9 +59,9 @@ async function MarketOverview() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <MacroStrip values={macro} />
-      <section aria-labelledby="top-title" className="grid gap-3">
+      <section aria-labelledby="top-title" className="grid grid-cols-1 gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="top-title" className="text-lg font-semibold">Maiores empresas da bolsa</h2>
           <p className="text-xs text-muted-foreground">
@@ -109,7 +109,7 @@ async function MarketOverview() {
 
 function HomeSkeleton() {
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="grid gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-20" />

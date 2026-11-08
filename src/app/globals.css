@@ -147,5 +147,6 @@
     font-family: var(--font-geist-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "zero" 0;
+    white-space: nowrap;
   }
 }

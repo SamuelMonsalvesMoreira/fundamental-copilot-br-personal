@@ -55,7 +55,7 @@ async function DataStatus() {
   const macro = getMacroSnapshot();
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <MacroStrip values={macro} />
       {market.latestQuoteDate && (
         <p className="text-sm text-muted-foreground">
@@ -168,7 +168,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function StatusSkeleton() {
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-24" />

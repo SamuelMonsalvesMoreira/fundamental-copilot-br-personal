@@ -55,5 +55,6 @@ describe("formatByType", () => {
     expect(formatByType(1.49, "perShare")).toBe("R$ 1,49");
     expect(formatCompactNumber(4_195_829_691)).toBe("4,20 bi");
     expect(formatByType(null, "percent")).toBe("—");
+    expect(formatByType(-0.004, "multiple")).toBe("0,00x");
   });
 });

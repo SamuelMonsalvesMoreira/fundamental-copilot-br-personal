@@ -31,7 +31,7 @@ export function Statements({ tables, cvmCode }: { tables: StatementTable[]; cvmC
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ToggleGroup value={[sel]} onValueChange={(v: string[]) => v[0] && setSel(v[0] as StatementTable["statement"])} variant="outline" size="sm" aria-label="Demonstração">
           {tables.map((t) => (

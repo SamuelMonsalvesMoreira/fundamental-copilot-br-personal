@@ -33,7 +33,7 @@ export function PeersTable({ peers, current, sector }: { peers: PeerRow[]; curre
   const self = peers.find((p) => p.ticker === current);
 
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-1 gap-2">
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-muted/60 text-xs text-muted-foreground">

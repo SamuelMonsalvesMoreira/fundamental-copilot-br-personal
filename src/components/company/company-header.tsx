@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { GitCompareArrowsIcon } from "lucide-react";
+import { WatchButton } from "@/components/portfolio/portfolio-client";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatSignedPercent, trendOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CompanyPageData } from "@/server/company";
@@ -9,6 +12,7 @@ const LAYOUT_LABEL = { bank: "Banco", insurance: "Seguradora" } as const;
 export function CompanyHeader({ data }: { data: CompanyPageData }) {
   const { meta, quote, classes, ticker } = data;
   const trend = trendOf(quote?.changePct);
+  const comparePeers = [ticker, ...data.peers.filter((p) => p.ticker !== ticker).slice(0, 3).map((p) => p.ticker)];
   return (
     <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
@@ -72,6 +76,14 @@ export function CompanyHeader({ data }: { data: CompanyPageData }) {
         ) : (
           <p className="text-sm text-muted-foreground">Sem cotação disponível para {ticker}.</p>
         )}
+        <div className="mt-3 flex gap-2 sm:justify-end">
+          <WatchButton ticker={ticker} watched={data.watched} />
+          {comparePeers.length > 1 && (
+            <Link href={`/comparar?t=${comparePeers.join(",")}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <GitCompareArrowsIcon /> Comparar com pares
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );

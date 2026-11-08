@@ -10,8 +10,16 @@ type Num = number | null | undefined;
 
 const isValid = (v: Num): v is number => typeof v === "number" && Number.isFinite(v);
 
-const fmt = (digits: number) =>
+const intl = (digits: number) =>
   new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+/** Formatador que evita "-0,0" quando um valor negativo minúsculo arredonda para zero. */
+const fmt = (digits: number) => ({
+  format: (v: number) => {
+    const rounded = Number(v.toFixed(digits));
+    return intl(digits).format(rounded === 0 ? 0 : rounded);
+  },
+});
 
 /** 1234.5 → "1.234,50" */
 export function formatNumber(v: Num, digits = 2): string {

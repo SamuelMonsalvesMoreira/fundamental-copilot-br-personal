@@ -117,7 +117,7 @@ export function ValuationPanel({ v, ticker }: { v: V; ticker: string }) {
     : { value: null, upside: null, formula: "Fluxo de caixa descontado", missing: !v.applicable ? "não se aplica a bancos e seguradoras (fluxo de caixa livre não representa o negócio)" : "faltam dados de caixa, dívida ou quantidade de ações", projections: [], terminalShare: null, enterpriseValue: null, equityValue: null };
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="grid gap-4 lg:grid-cols-2">
         <ResultCard
           title="Graham"
