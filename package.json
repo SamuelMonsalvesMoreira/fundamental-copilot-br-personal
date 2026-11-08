@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "validate": "npm run lint && npm run typecheck && npm test && npm run build",
+    "setup": "npm run db:migrate && npm run ingest:cvm && npm run ingest:market",
     "ingest:cvm": "tsx scripts/ingest-cvm.ts",
     "ingest:market": "tsx scripts/ingest-market.ts",
     "worker": "tsx scripts/worker.ts",

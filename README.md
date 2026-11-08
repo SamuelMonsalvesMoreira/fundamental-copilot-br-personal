@@ -1,42 +1,73 @@
 # Fundamental Copilot BR
 
 Análise fundamentalista de ações brasileiras a partir de dados oficiais e atuais:
-demonstrações financeiras da **CVM** (DFP e ITR), indicadores macro do **Banco Central**
-(Selic, IPCA, CDI) e cotações/proventos da **brapi.dev**, com um copiloto de IA (Claude)
-que responde citando os números do banco local.
+demonstrações financeiras da **CVM** (DFP e ITR), Selic, CDI e IPCA do **Banco Central** e
+cotações e proventos da **brapi.dev**, com um copiloto de IA (Claude) que responde citando os
+números do banco local.
 
-> Ferramenta de estudo. Nada aqui é recomendação de investimento.
+> Ferramenta de estudo para uso pessoal. Nada aqui é recomendação de investimento.
 
-> **Projeto em reconstrução.** Este README será completado na etapa final. Situação atual:
-> esqueleto do app, banco local e tela de status das fontes (`/dados`).
+## O que o app faz
+
+- **Busca** por ticker ou nome, com autocomplete.
+- **Página da empresa:** indicadores com fórmula e fonte, gráficos de até 10 anos, demonstrações,
+  valuation (Graham, Bazin e DCF editável), projeções, pares do setor, chat com IA e relatório.
+- **Screener** com filtros, **comparador** de 2 a 4 empresas e **carteira/watchlist**.
+- **Dados** (`/dados`): quando cada fonte foi coletada e se houve erro.
+
+Cada tela mostra a data e a fonte dos números. Dado ausente aparece como "—", com o motivo, e
+nunca como zero.
 
 ## Requisitos
 
 - Node.js 22 ou superior (recomendado: 24 LTS)
 - Git
+- Cerca de 300 MB livres para o banco local
 
-## Instalação rápida
+No Windows, use uma pasta de caminho curto, como `C:\dev\fundamental-copilot`: caminhos muito
+longos quebram ferramentas do Node e do Git.
+
+## Instalação
 
 ```powershell
 git clone https://github.com/SamuelMonsalvesMoreira/fundamental-copilot-br-personal.git
 cd fundamental-copilot-br-personal
 npm ci
-copy .env.example .env.local   # depois edite e preencha as chaves
-npm run db:migrate
-npm run dev
+copy .env.example .env.local
 ```
 
-Abra http://localhost:3000.
+Abra o `.env.local`, preencha as chaves (tabela abaixo) e faça a primeira carga de dados, que leva
+cerca de 5 minutos:
+
+```powershell
+npm run setup
+```
+
+Depois é só rodar:
+
+```powershell
+npm run dev:all
+```
+
+Abra http://localhost:3000. O `dev:all` sobe o app e o agendador das coletas. Use `npm run dev`
+se quiser só o app.
 
 ## Chaves (arquivo `.env.local`)
 
-| Variável | Para quê | Onde obter |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Copiloto de IA | https://console.anthropic.com/ |
-| `BRAPI_TOKEN` | Cotações e proventos (plano gratuito) | https://brapi.dev/dashboard |
-| `DATABASE_PATH` | Caminho do SQLite (opcional) | padrão: `data/app.db` |
+| Variável | Obrigatória? | Para quê | Onde obter |
+|---|---|---|---|
+| `BRAPI_TOKEN` | Recomendada | Histórico de cotações e proventos por empresa (plano gratuito) | https://brapi.dev/dashboard |
+| `ANTHROPIC_API_KEY` | Só para a IA | Abas Copiloto e Relatório (uso pago por consumo) | https://console.anthropic.com/ |
+| `CLAUDE_CHAT_MODEL` | Não | Modelo do chat (padrão `claude-sonnet-5-5`) | |
+| `CLAUDE_REPORT_MODEL` | Não | Modelo do relatório (padrão `claude-opus-5-5`) | |
+| `DATABASE_PATH` | Não | Caminho do SQLite (padrão `data/app.db`) | |
+
+Sem nenhuma chave, o app já funciona com balanços, indicadores, cotações do dia, screener,
+comparador, carteira e projeções.
 
 As chaves ficam só no servidor e nunca devem ir para o Git (`.env.local` está no `.gitignore`).
+O app não tem login: rode apenas no seu computador e não o exponha na internet, porque qualquer
+pessoa com acesso poderia consumir a sua chave da API.
 
 ## Dados da CVM
 
@@ -150,6 +181,28 @@ Abas **Copiloto** (chat) e **Relatório** na página de cada empresa. Precisa de
 - `npm run check:ai-tools -- WEGE3` executa todas as ferramentas sem chamar a API, para ver o que a
   IA recebe.
 
+## Limitações conhecidas
+
+- **Capex e dividendos pagos** vêm de linhas de texto livre do fluxo de caixa, então são estimativas.
+- **Dividend yield sem token da brapi** é estimado pelos dividendos pagos no fluxo de caixa e pode
+  distorcer quando pagamentos de anos diferentes caem no mesmo período.
+- **EBITDA e lucro são contábeis**, sem os ajustes que as empresas costumam divulgar.
+- **Quantidade de ações:** as companhias em que a escala não pode ser conferida ficam sem indicadores
+  por ação. Grupamentos recentes também podem impedir a conferência até o próximo balanço.
+- **Holdings** têm margens sem significado, porque o resultado vem de equivalência patrimonial.
+- **Cotações** do plano gratuito da brapi têm atraso de cerca de 30 minutos.
+
+## Solução de problemas
+
+| Sintoma | O que fazer |
+|---|---|
+| "no such column" depois de atualizar o projeto | Rode `npm run db:migrate` e reinicie o app |
+| Página inicial pede para baixar dados | Rode `npm run setup` |
+| Copiloto aparece desativado | Preencha `ANTHROPIC_API_KEY` no `.env.local` e reinicie o app |
+| Gráfico de cotação sem dados | Preencha `BRAPI_TOKEN` no `.env.local` e reinicie o app |
+| Erro de instalação com caminho longo no Windows | Mova o projeto para uma pasta curta |
+| Quer forçar a atualização dos balanços | `npm run ingest:cvm -- --force` |
+
 ## Estrutura
 
 ```
@@ -168,6 +221,7 @@ scripts/       comandos de linha (migração, coleta, agendador)
 
 | Comando | O que faz |
 |---|---|
+| `npm run setup` | cria o banco e faz a primeira carga completa de dados |
 | `npm run dev` | servidor de desenvolvimento |
 | `npm run db:migrate` | cria/atualiza o banco local |
 | `npm run ingest:cvm` | baixa cadastro, tickers e DFP/ITR da CVM (~11 anos; só rebaixa o que mudou) |
@@ -176,5 +230,7 @@ scripts/       comandos de linha (migração, coleta, agendador)
 | `npm run ingest:market -- --ticker WEGE3` | histórico de 10 anos e proventos de um ticker (exige `BRAPI_TOKEN`) |
 | `npm run worker` | agendador: mercado nos dias úteis às 19h30, CVM todo dia às 7h; recupera atrasos ao iniciar |
 | `npm run dev:all` | app + agendador juntos |
+| `npm run show -- WEGE3` | mostra os indicadores de um ticker no terminal |
+| `npm run check:ai-tools -- WEGE3` | executa as ferramentas da IA sem chamar a API |
 | `npm test` | testes |
 | `npm run validate` | lint + tipos + testes + build (o mesmo que a CI) |
