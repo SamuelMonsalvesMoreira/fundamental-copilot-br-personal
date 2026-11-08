@@ -1,3 +1,4 @@
+import { peerMedians } from "@/analytics/peers";
 import "server-only";
 import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
@@ -244,14 +245,11 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
 
     case "pares_setor": {
       const p = await ctx.page(String(input.ticker));
-      const med = (k: keyof (typeof p.peers)[number]) => {
-        const xs = p.peers.map((x) => x[k] as number | null).filter((v): v is number => v !== null).sort((a, b) => a - b);
-        if (!xs.length) return null;
-        const m = Math.floor(xs.length / 2);
-        return r(xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2);
-      };
+      const m = peerMedians(p.peers, p.ticker);
       return {
         setor: p.meta.sector,
+        qualidade_comparacao: p.peerGroup.quality,
+        observacao: p.peerGroup.note,
         fonte: "Indicadores calculados com dados da CVM e cotações de mercado (último pregão)",
         empresas: p.peers.map((x) => ({
           ticker: x.ticker,
@@ -265,7 +263,10 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
           dy_fracao: r(x.dy),
           divida_liquida_ebitda: r(x.netDebtEbitda, 2),
         })),
-        mediana: { pl: med("pl"), pvp: med("pvp"), ev_ebitda: med("evEbitda"), roe_fracao: med("roe"), margem_liquida_fracao: med("netMargin"), dy_fracao: med("dy") },
+        mediana_sem_a_empresa: { pl: r(m.pl), pvp: r(m.pvp), ev_ebitda: r(m.evEbitda), roe_fracao: r(m.roe), margem_liquida_fracao: r(m.netMargin), dy_fracao: r(m.dy) },
+        historico_proprio: p.ownHistory
+          ? { observacao: "Aproximação com a quantidade atual de ações", mediana_pl: r(p.ownHistory.medianPl, 2), mediana_pvp: r(p.ownHistory.medianPvp, 2), anos: p.ownHistory.years.map((y) => ({ ano: y.label, pl: r(y.pl, 2), pvp: r(y.pvp, 2) })) }
+          : null,
       };
     }
 

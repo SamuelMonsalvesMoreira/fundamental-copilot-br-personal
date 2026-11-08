@@ -62,6 +62,8 @@ function page(indicators: Record<string, number | null>, over: Partial<CompanyPa
     dividendsByYear: [2021, 2022, 2023, 2024, 2025].map((year) => ({ year, perShare: 1, paid: 40 })),
     valuation: { price: 20, graham: { value: 15, upside: -0.25, formula: "" }, lpa: 1, vpa: 5, bazin: { averageDps: 1.2, perYear: [], source: "" }, dcf: { notes: {} }, applicable: false },
     peers,
+    peerGroup: { peers, quality: "boa", note: "" },
+    ownHistory: null,
     macroDate: null,
     macro: { selic: 0.1375, cdi: 0.1365, ipca12m: 0.0458 },
     historyStatus: { message: null },
@@ -97,6 +99,23 @@ describe("relatório pré-moldado", () => {
     const m = texts(r, "pares");
     expect(m.find((i) => i.text.startsWith("P/L"))).toMatchObject({ tone: "pos" });
     expect(m.find((i) => i.text.startsWith("P/VP"))).toMatchObject({ tone: "neg" });
+  });
+
+  it("grupo fraco não vira conclusão de caro ou barato", () => {
+    const base = page({ pl: 30, roe: 0.3 });
+    const r = buildReport({ ...base, peerGroup: { peers: base.peers, quality: "fraca", note: "Comparação pouco confiável." } }, opts);
+    const m = texts(r, "pares");
+    expect(m.every((i) => i.tone === "neu")).toBe(true);
+    expect(m.find((i) => i.text.startsWith("P/L"))?.text).toContain("porte bem diferente");
+    expect(m.at(-1)?.text).toBe("Comparação pouco confiável.");
+  });
+
+  it("compara com o histórico da própria ação", () => {
+    const r = buildReport(page({ pl: 10, pvp: 3 }, { ownHistory: { years: [], medianPl: 20, medianPvp: 3 } }), opts);
+    const own = texts(r, "pares").filter((i) => i.text.startsWith("Frente ao próprio histórico"));
+    expect(own[0]).toMatchObject({ tone: "pos" });
+    expect(own[0].text).toContain("50% abaixo");
+    expect(own[1]).toMatchObject({ tone: "neu" });
   });
 
   it("banco: não fala de EBITDA e deixa Dívida como sem dado", () => {

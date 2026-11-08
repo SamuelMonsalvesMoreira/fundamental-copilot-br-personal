@@ -156,6 +156,14 @@ atenção com os números, tendências e modelos de valuation. Você pode inform
 e o payout: o relatório calcula LPA, P/L projetado, dividendo por ação e rendimento na hora.
 O botão **Exportar PDF** abre a impressão do navegador; escolha "Salvar como PDF".
 
+## Pares
+
+O grupo automático usa empresas do mesmo setor com porte de até 10× para mais ou para menos, liquidez
+mínima de R$ 500 mil no último pregão e dados recentes. Se faltarem empresas, o app amplia para o setor
+da CVM; se ainda assim não houver comparáveis, marca a comparação como fraca e o relatório não conclui
+se a ação está cara ou barata. Na aba **Pares** você pode adicionar ou retirar empresas. A aba também
+compara P/L e P/VP com a mediana dos últimos fins de ano da própria ação.
+
 ## Projeções
 
 Aba **Projeções** na página da empresa e página `/projecoes` com todas as salvas. São estimativas

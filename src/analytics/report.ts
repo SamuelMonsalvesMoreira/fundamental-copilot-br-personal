@@ -6,6 +6,7 @@
  * e o relatório não recomenda comprar ou vender.
  */
 import type { ProjectionResult } from "./projections";
+import { peerMedians } from "./peers";
 import { dcf } from "./valuation";
 import type { CompanyPageData, SeriesPoint } from "@/server/company";
 import { formatCompactCurrency as money, formatCurrency as brl, formatDate, formatMultiple as mult, formatPercent as pct, formatSignedPercent as signed } from "@/lib/format";
@@ -170,21 +171,38 @@ export function buildReport(d: CompanyPageData, opts: ReportOptions): AutoReport
   // ── preço e pares ──
   const market: ReportItem[] = [];
   const others = d.peers.filter((p) => p.ticker !== d.ticker);
-  const compare = (label: string, own: number | null, values: Array<number | null>, digits: number) => {
-    const med = median(nonNull(values).filter((x) => x > 0));
+  const group = d.peerGroup;
+  const weak = group.quality === "fraca";
+  const meds = peerMedians(d.peers, d.ticker);
+  const hist = d.ownHistory;
+  const vsOwn = (label: string, own: number | null, med: number | null | undefined, digits: number) => {
+    if (own === null || own <= 0 || med === null || med === undefined) return;
+    const diff = own / med - 1;
+    const base = `Frente ao próprio histórico: ${label} de ${mult(own, digits)} contra mediana de ${mult(med, digits)} nos últimos fins de ano`;
+    if (diff <= -0.2) market.push({ tone: "pos", text: `${base}, ${pct(-diff, 0)} abaixo.` });
+    else if (diff >= 0.2) market.push({ tone: "neg", text: `${base}, ${pct(diff, 0)} acima.` });
+    else market.push({ tone: "neu", text: `${base}, em linha.` });
+  };
+  vsOwn("P/L", v("pl"), hist?.medianPl, 1);
+  vsOwn("P/VP", v("pvp"), hist?.medianPvp, 2);
+  const compare = (label: string, own: number | null, med: number | null, digits: number) => {
     if (own === null || own <= 0 || med === null) return;
     const diff = own / med - 1;
+    if (weak) {
+      market.push({ tone: "neu", text: `${label} de ${mult(own, digits)} contra mediana de ${mult(med, digits)} de empresas de porte bem diferente.` });
+      return;
+    }
     const base = `${label} de ${mult(own, digits)} contra mediana de ${mult(med, digits)} dos pares`;
     if (diff <= -0.2) market.push({ tone: "pos", text: `${base}: ${pct(-diff, 0)} mais barata.` });
     else if (diff >= 0.2) market.push({ tone: "neg", text: `${base}: ${pct(diff, 0)} mais cara.` });
     else market.push({ tone: "neu", text: `${base}: em linha com o setor.` });
   };
   if (others.length >= 2) {
-    compare("P/L", v("pl"), others.map((p) => p.pl), 1);
-    compare("P/VP", v("pvp"), others.map((p) => p.pvp), 2);
-    if (!isFinancial) compare("EV/EBITDA", v("evEbitda"), others.map((p) => p.evEbitda), 1);
-    const medRoe = median(nonNull(others.map((p) => p.roe)));
-    if (roe !== null && medRoe !== null) market.push({ tone: roe > medRoe ? "pos" : "neg", text: `ROE de ${pct(roe)} ${roe > medRoe ? "acima" : "abaixo"} da mediana de ${pct(medRoe)} dos pares.` });
+    compare("P/L", v("pl"), meds.pl, 1);
+    compare("P/VP", v("pvp"), meds.pvp, 2);
+    if (!isFinancial) compare("EV/EBITDA", v("evEbitda"), meds.evEbitda, 1);
+    if (roe !== null && meds.roe !== null) market.push({ tone: weak ? "neu" : roe > meds.roe ? "pos" : "neg", text: `ROE de ${pct(roe)} ${roe > meds.roe ? "acima" : "abaixo"} da mediana de ${pct(meds.roe)} dos pares.` });
+    if (group.quality === "fraca" || group.quality === "ampla") market.push({ tone: "neu", text: group.note });
   } else {
     market.push({ tone: "neu", text: `Poucos pares com dados em “${d.meta.sector}” para uma comparação confiável.` });
   }
@@ -256,7 +274,7 @@ export function buildReport(d: CompanyPageData, opts: ReportOptions): AutoReport
     { label: "Dívida e caixa", status: isFinancial ? "Sem dado" : pillarOf(debt) },
     { label: "Crescimento", status: pillarOf(growth) },
     { label: "Dividendos", status: pillarOf(income) },
-    { label: "Preço x pares", status: others.length >= 2 ? pillarOf(market) : "Sem dado" },
+    { label: "Preço relativo", status: others.length >= 2 || hist ? pillarOf(market) : "Sem dado" },
   ];
 
   const summary: string[] = [];
@@ -286,7 +304,7 @@ export function buildReport(d: CompanyPageData, opts: ReportOptions): AutoReport
     { id: "divida", title: "Dívida e geração de caixa", items: debt },
     { id: "crescimento", title: "Crescimento", items: growth },
     { id: "dividendos", title: "Dividendos", items: income },
-    { id: "pares", title: `Preço e comparação com pares (${d.meta.sector})`, items: market },
+    { id: "pares", title: "Preço frente ao próprio histórico e aos pares", items: market },
     { id: "tendencias", title: "Tendências", items: trends },
     { id: "valuation", title: "Modelos de valuation (estudo)", items: models },
   ].filter((s) => s.items.length > 0);

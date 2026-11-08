@@ -2,6 +2,7 @@
  * Leitura dos dados de uma companhia no SQLite e montagem da análise.
  * Usado pelo servidor Next (via src/server) e pelos scripts de coleta.
  */
+import { customGroup, selectPeers, type PeerGroup, type PeerRow } from "@/analytics/peers";
 import type Database from "better-sqlite3";
 import { analyzeCompany, type CompanyAnalysis, type CompanyInput, type DividendRecord, type TickerQuote } from "@/analytics/indicators";
 import type { FinRow } from "@/analytics/periods";
@@ -151,31 +152,41 @@ export function analyzeByCnpj(sqlite: Database.Database, cnpj: string, preferred
   return { ...analyzeCompany(input), input };
 }
 
-export interface PeerRow {
-  cnpj: string;
-  ticker: string;
-  name: string;
-  marketCap: number | null;
-  pl: number | null;
-  pvp: number | null;
-  evEbitda: number | null;
-  roe: number | null;
-  netMargin: number | null;
-  dy: number | null;
-  netDebtEbitda: number | null;
-}
+export type { PeerRow };
 
-/** Empresas do mesmo setor, ordenadas por valor de mercado (inclui a própria). */
-export function loadPeers(sqlite: Database.Database, cnpj: string, limit = 8): PeerRow[] {
-  return sqlite
+const PEER_COLS = `s.cnpj, s.ticker, s.name, s.market_cap AS marketCap, s.pl, s.pvp, s.ev_ebitda AS evEbitda, s.roe,
+  s.net_margin AS netMargin, s.dy, s.net_debt_ebitda AS netDebtEbitda, s.price * s.volume AS liquidity,
+  s.price_date AS priceDate, s.financials_end AS financialsEnd`;
+
+/** Grupo de comparação: o escolhido pelo usuário ou o automático (ver analytics/peers.ts). */
+export function loadPeerGroup(sqlite: Database.Database, cnpj: string): PeerGroup {
+  const target = sqlite
     .prepare(
-      `SELECT cnpj, ticker, name, market_cap AS marketCap, pl, pvp, ev_ebitda AS evEbitda, roe,
-              net_margin AS netMargin, dy, net_debt_ebitda AS netDebtEbitda
-         FROM company_snapshots
-        WHERE sector_key = (SELECT sector_key FROM company_snapshots WHERE cnpj = ?)
-          AND price IS NOT NULL
-        ORDER BY market_cap DESC NULLS LAST
-        LIMIT ?`,
+      `SELECT ${PEER_COLS}, s.sector AS sectorName, s.sector_key AS sectorKey, s.layout, c.sector AS cvmSector
+         FROM company_snapshots s JOIN companies c ON c.cnpj = s.cnpj
+        WHERE s.cnpj = ? AND s.price IS NOT NULL`,
     )
-    .all(cnpj, limit) as PeerRow[];
+    .get(cnpj) as (PeerRow & { sectorName: string; sectorKey: string; layout: string | null; cvmSector: string | null }) | undefined;
+  if (!target) return { peers: [], quality: "fraca", note: "Esta empresa não tem cotação para ser comparada." };
+
+  const custom = sqlite
+    .prepare(
+      `SELECT DISTINCT ${PEER_COLS}
+         FROM peer_choices p JOIN tickers t ON t.ticker = p.peer_ticker JOIN company_snapshots s ON s.cnpj = t.cnpj
+        WHERE p.cnpj = ? AND s.price IS NOT NULL`,
+    )
+    .all(cnpj) as PeerRow[];
+  if (custom.length > 0) return customGroup(target, custom);
+
+  const sector = sqlite.prepare(`SELECT ${PEER_COLS} FROM company_snapshots s WHERE s.sector_key = ? AND s.price IS NOT NULL`).all(target.sectorKey) as PeerRow[];
+  const broadName = target.cvmSector && !/sem setor/i.test(target.cvmSector) ? target.cvmSector : null;
+  const broad = broadName
+    ? (sqlite
+        .prepare(
+          `SELECT ${PEER_COLS} FROM company_snapshots s JOIN companies c ON c.cnpj = s.cnpj
+            WHERE c.sector = ? AND s.layout IS ? AND s.sector_key <> ? AND s.price IS NOT NULL`,
+        )
+        .all(broadName, target.layout, target.sectorKey) as PeerRow[])
+    : [];
+  return selectPeers(target, sector, broad, { sector: target.sectorName, broad: broadName?.replace(/^Emp\.\s*Adm\.\s*Part\.\s*-\s*/i, "").trim() ?? null });
 }

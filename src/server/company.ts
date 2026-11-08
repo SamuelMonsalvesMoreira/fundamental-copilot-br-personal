@@ -3,7 +3,8 @@ import { sqlite } from "@/db/client";
 import { buildQuarterly, FinTable, type MetricMap } from "@/analytics/periods";
 import { debtOf, ebitdaOf, type Indicator } from "@/analytics/indicators";
 import { averageAnnualDividends, defaultDcfAssumptions, graham, type DcfDefaults, type ValuationResult } from "@/analytics/valuation";
-import { analyzeByCnpj, findTicker, loadCompanyMeta, loadPeers, type CompanyMeta, type PeerRow } from "@/data/company-data";
+import { ownHistory, type OwnHistory, type PeerGroup } from "@/analytics/peers";
+import { analyzeByCnpj, findTicker, loadCompanyMeta, loadPeerGroup, type CompanyMeta, type PeerRow } from "@/data/company-data";
 import { ensureTickerHistory } from "@/ingest/history";
 import { getMacroSnapshot } from "./macro";
 import { isWatched } from "./portfolio";
@@ -63,6 +64,9 @@ export interface CompanyPageData {
     applicable: boolean;
   };
   peers: PeerRow[];
+  peerGroup: PeerGroup;
+  /** P/L e P/VP da própria ação em fins de ano */
+  ownHistory: OwnHistory | null;
   macroDate: string | null;
   macro: { selic: number | null; cdi: number | null; ipca12m: number | null };
   historyStatus: { message: string | null };
@@ -229,6 +233,9 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
     }
   }
 
+  const priceHistory = loadPriceHistory(ref.ticker);
+  const peerGroup = loadPeerGroup(sqlite, ref.cnpj);
+
   return {
     ticker: ref.ticker,
     meta,
@@ -247,7 +254,7 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
       : null,
     annual,
     quarterly,
-    priceHistory: loadPriceHistory(ref.ticker),
+    priceHistory,
     historySource,
     dividendsByYear,
     valuation: {
@@ -267,7 +274,10 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
       }),
       applicable: meta.layout === "standard" || meta.layout === null,
     },
-    peers: loadPeers(sqlite, ref.cnpj, 10),
+    peers: peerGroup.peers,
+    peerGroup,
+    // ações implícitas: funciona para várias classes e para units
+    ownHistory: ownHistory(priceHistory, annual, ind.marketCap.value !== null && price ? ind.marketCap.value / price : null),
     macroDate: macro[0]?.date ?? null,
     macro: { selic, cdi: macro.find((m) => m.key === "cdi")?.value ?? null, ipca12m: ipca },
     historyStatus: { message: historyMessage },

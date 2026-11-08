@@ -229,6 +229,16 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE tickers ADD COLUMN shares_per_unit REAL;
   ALTER TABLE tickers ADD COLUMN unit_composition TEXT;
   `,
+
+  // 7 — pares escolhidos pelo usuário
+  `
+  CREATE TABLE peer_choices (
+    cnpj TEXT NOT NULL,
+    peer_ticker TEXT NOT NULL,
+    added_at TEXT NOT NULL,
+    PRIMARY KEY (cnpj, peer_ticker)
+  );
+  `,
 ];
 
 /** Aplica as migrações pendentes. Retorna a versão final do esquema. */

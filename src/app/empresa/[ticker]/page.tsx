@@ -53,7 +53,7 @@ async function Company({ params }: { params: PageProps<"/empresa/[ticker]">["par
           { value: "demonstracoes", label: "Demonstrações", content: <Statements tables={statements} cvmCode={data.meta.cvmCode} /> },
           { value: "valuation", label: "Valuation", content: <ValuationPanel v={data.valuation} ticker={data.ticker} /> },
           { value: "projecoes", label: "Projeções", content: <ProjectionsPanel ctx={projection} /> },
-          { value: "pares", label: "Pares", content: <PeersTable peers={data.peers} current={data.ticker} sector={data.meta.sector} /> },
+          { value: "pares", label: "Pares", content: <PeersTable group={data.peerGroup} current={data.ticker} sector={data.meta.sector} history={data.ownHistory} /> },
           { value: "copiloto", label: "Copiloto", content: <CopilotChat ticker={data.ticker} enabled={aiEnabled} isFinancial={isFinancial} /> },
           { value: "relatorio", label: "Relatório", content: <ReportTab data={data} ctx={projection} aiEnabled={aiEnabled} aiReport={getLatestReport(data.ticker)} aiModel={REPORT_MODEL()} /> },
         ]}
