@@ -18,6 +18,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_6bHhc4JY5SVPobCRzYbqFVyd
+      VERCEL_PROJECT_ID: prj_9GGof3PPcWUf5OeNHA7ZHSPYITOn
     steps:
       - uses: actions/checkout@v4
 
@@ -60,20 +62,6 @@ jobs:
 
       - name: Publicar na Vercel
         run: |
-          TEAM=team_6bHhc4JY5SVPobCRzYbqFVyd
-          NAME=fundamental-copilot-br
-          API=https://api.vercel.com
-          AUTH="Authorization: Bearer $VERCEL_TOKEN"
-          # O token não lê o usuário, então o projeto é localizado ou criado pela API.
-          project=$(curl -sS -H "$AUTH" "$API/v9/projects/$NAME?teamId=$TEAM")
-          id=$(echo "$project" | jq -r '.id // empty')
-          if [ -z "$id" ]; then
-            project=$(curl -sS -X POST -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"name\":\"$NAME\",\"framework\":\"nextjs\"}" "$API/v11/projects?teamId=$TEAM")
-            id=$(echo "$project" | jq -r '.id // empty')
-          fi
-          if [ -z "$id" ]; then echo "$project" | jq '.error'; exit 1; fi
-          export VERCEL_ORG_ID="$TEAM" VERCEL_PROJECT_ID="$id"
           npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
           NEXT_PUBLIC_DEMO_MODE=1 npx vercel@latest build --prod --token="$VERCEL_TOKEN"
           npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
