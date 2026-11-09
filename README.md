@@ -1,11 +1,31 @@
 # Fundamental Copilot BR
 
-Análise fundamentalista de ações brasileiras a partir de dados oficiais e atuais:
-demonstrações financeiras da **CVM** (DFP e ITR), Selic, CDI e IPCA do **Banco Central** e
-cotações e proventos da **brapi.dev** e do **Yahoo Finance**, com um copiloto de IA (Claude) que responde citando os
-números do banco local.
+### [Abrir o site](https://fundamental-copilot-br-six.vercel.app) · [Ir direto ao Panorama](https://fundamental-copilot-br-six.vercel.app/panorama)
 
-> Ferramenta de estudo para uso pessoal. Nada aqui é recomendação de investimento.
+Projeto pessoal que construí para estudar empresas da bolsa brasileira. Ele reúne balanços oficiais,
+juros e preços em um só lugar, e deixa testar cenários: você coloca o lucro que espera e vê como
+ficam o P/L e o ROE no próximo ano.
+
+**No site público:**
+
+- **Panorama:** quantas empresas rendem acima da Selic, medianas do mercado, gráfico de preço por
+  rentabilidade e maiores setores.
+- **Simulador de lucro:** P/L e ROE projetados a partir da sua estimativa, com o antes e o depois no gráfico.
+- **Página de cada empresa:** indicadores com fórmula e fonte, gráficos de 10 anos, valuation (Graham,
+  Bazin e DCF editável), comparação com pares de porte parecido e relatório automático em PDF.
+- **Screener e comparador** de empresas.
+
+**Como funciona:** Next.js, React, TypeScript, Tailwind e SQLite. Os dados vêm da CVM, do Banco Central,
+da brapi.dev e do Yahoo Finance. Todo dia útil, um robô do GitHub Actions atualiza preços e indicadores
+e republica o site na Vercel, com no máximo um dia útil de atraso nos preços. Os cálculos têm 151 testes
+automatizados, incluindo comparação com números publicados pelas empresas.
+
+> Ferramenta de estudo. Nada aqui é recomendação de investimento.
+
+## Rodando no seu computador
+
+A versão local inclui também carteira, projeções salvas e um chat com IA (Claude) que responde citando
+os números do banco. As instruções estão abaixo.
 
 ## O que o app faz
 
