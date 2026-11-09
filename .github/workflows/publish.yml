@@ -60,8 +60,9 @@ jobs:
 
       - name: Publicar na Vercel
         run: |
-          npx vercel@latest project add fundamental-copilot-br --token="$VERCEL_TOKEN" || true
-          npx vercel@latest link --yes --project fundamental-copilot-br --token="$VERCEL_TOKEN"
+          SCOPE=samuelmonsalves-3723s-projects
+          npx vercel@latest project create fundamental-copilot-br --scope "$SCOPE" --token="$VERCEL_TOKEN" || true
+          npx vercel@latest link --yes --project fundamental-copilot-br --scope "$SCOPE" --token="$VERCEL_TOKEN"
           npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
           NEXT_PUBLIC_DEMO_MODE=1 npx vercel@latest build --prod --token="$VERCEL_TOKEN"
           npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
