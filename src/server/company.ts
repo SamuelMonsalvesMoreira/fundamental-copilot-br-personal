@@ -200,6 +200,13 @@ export async function getCompanyPage(rawTicker: string): Promise<CompanyPageData
   const quoteRow = sqlite
     .prepare(`SELECT close, change_pct AS changePct, date, volume, source FROM quotes_daily WHERE ticker = ? ORDER BY date DESC LIMIT 1`)
     .get(ref.ticker) as CompanyPageData["quote"] | undefined;
+  // Pregão vindo do histórico não traz a variação: calcula pelo fechamento anterior.
+  if (quoteRow && quoteRow.changePct === null) {
+    const prev = sqlite
+      .prepare(`SELECT close FROM quotes_daily WHERE ticker = ? AND date < ? ORDER BY date DESC LIMIT 1`)
+      .get(ref.ticker, quoteRow.date) as { close: number } | undefined;
+    if (prev && prev.close > 0) quoteRow.changePct = quoteRow.close / prev.close - 1;
+  }
 
   // proventos por ano: por ação (brapi, ticker atual) e pagos no total (DFC)
   const divsTicker = a.input.dividends.filter((d) => d.ticker === ref.ticker);

@@ -7,6 +7,7 @@ import { CheckCircle2Icon, CircleAlertIcon, CircleIcon, FileDownIcon, SaveIcon }
 import { toast } from "sonner";
 import { projectEarnings, type ProjectionAssumptions } from "@/analytics/projections";
 import { buildReport, type Pillar, type ReportItem, type Tone } from "@/analytics/report";
+import { MoneyInput } from "@/components/common/money-input";
 import { Button } from "@/components/ui/button";
 import { formatCompactNumber, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -48,20 +49,20 @@ function Items({ items }: { items: ReportItem[] }) {
 export function AutoReport({ data, ctx }: { data: CompanyPageData; ctx: ProjectionContext }) {
   const base = ctx.saved ?? ctx.defaults;
   const savedEstimate = ctx.saved?.overrides["1"]?.netIncome ?? null;
-  const [estimateMi, setEstimateMi] = useState<number | null>(savedEstimate === null ? null : Math.round(savedEstimate / 1e6));
+  const [estimate, setEstimate] = useState<number | null>(savedEstimate);
   const [payout, setPayout] = useState(ctx.saved?.overrides["1"]?.payout ?? base.payout);
   const [pending, start] = useTransition();
 
   const assumptions: ProjectionAssumptions = useMemo(() => {
     const overrides = { ...base.overrides };
     const first = { ...(overrides["1"] ?? {}), payout };
-    if (estimateMi !== null) first.netIncome = estimateMi * 1e6;
+    if (estimate !== null) first.netIncome = estimate;
     else delete first.netIncome;
     overrides["1"] = first;
     return { ...base, overrides };
-  }, [base, estimateMi, payout]);
+  }, [base, estimate, payout]);
 
-  const hasScenario = estimateMi !== null || ctx.saved !== null;
+  const hasScenario = estimate !== null || ctx.saved !== null;
   const result = useMemo(() => projectEarnings(ctx.base, assumptions, { avgCost: ctx.avgCost }), [ctx.base, assumptions, ctx.avgCost]);
   const report = useMemo(
     () =>
@@ -98,7 +99,7 @@ export function AutoReport({ data, ctx }: { data: CompanyPageData; ctx: Projecti
           </div>
           <div className="flex gap-2">
             {!isDemo && (
-            <Button variant="outline" size="sm" onClick={save} disabled={pending || (estimateMi === null && !ctx.saved)}>
+            <Button variant="outline" size="sm" onClick={save} disabled={pending || (estimate === null && !ctx.saved)}>
               <SaveIcon /> Salvar estimativa
             </Button>
             )}
@@ -110,23 +111,7 @@ export function AutoReport({ data, ctx }: { data: CompanyPageData; ctx: Projecti
         <div className="grid gap-3 sm:max-w-lg sm:grid-cols-2">
           <label className="grid gap-1 text-xs">
             <span className="text-muted-foreground">Lucro estimado, próximos 12 meses</span>
-            <span className="flex items-center rounded-md border bg-background focus-within:ring-3 focus-within:ring-ring/30">
-              <input
-                type="number"
-                inputMode="decimal"
-                step={100}
-                value={estimateMi ?? ""}
-                placeholder={ctx.base.netIncome !== null ? String(Math.round(ctx.base.netIncome / 1e6)) : ""}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  const n = Number(raw);
-                  setEstimateMi(raw === "" || !Number.isFinite(n) ? null : n);
-                }}
-                aria-label="Lucro estimado em R$ milhões"
-                className="num w-full bg-transparent px-2 py-1.5 text-sm outline-none"
-              />
-              <span className="pr-2 whitespace-nowrap text-muted-foreground">R$ mi</span>
-            </span>
+            <MoneyInput value={estimate} reference={ctx.base.netIncome} onChange={setEstimate} ariaLabel="Lucro estimado" />
             <span className="text-[11px] text-muted-foreground">Vazio: usa sua projeção salva, se houver.</span>
           </label>
           <PercentInput label="Payout esperado" value={payout} onChange={setPayout} step={1} hint={ctx.notes.payout} />

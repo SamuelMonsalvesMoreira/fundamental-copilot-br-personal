@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { XIcon } from "lucide-react";
 import { simulateProfit, type MarketRow } from "@/analytics/market-overview";
+import { MoneyInput } from "@/components/common/money-input";
 import { Button } from "@/components/ui/button";
 import { formatCompactCurrency, formatMultiple, formatPercent, formatSignedPercent, MISSING } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,8 @@ const SCENARIOS = [-0.1, 0.1, 0.2];
 
 interface Item {
   ticker: string;
-  estimateMi: number | null;
+  /** lucro estimado em reais */
+  estimate: number | null;
 }
 
 // As estimativas ficam só no navegador de quem usa: nada vai para o servidor.
@@ -50,7 +52,13 @@ function parse(raw: string): Item[] {
   try {
     const value: unknown = JSON.parse(raw);
     if (!Array.isArray(value)) return [];
-    return value.filter((i): i is Item => typeof i?.ticker === "string" && (i.estimateMi === null || typeof i.estimateMi === "number"));
+    // versão antiga guardava em milhões (estimateMi)
+    return value.flatMap((i): Item[] => {
+      if (typeof i?.ticker !== "string") return [];
+      if (typeof i.estimate === "number") return [{ ticker: i.ticker, estimate: i.estimate }];
+      if (typeof i.estimateMi === "number") return [{ ticker: i.ticker, estimate: i.estimateMi * 1e6 }];
+      return [{ ticker: i.ticker, estimate: null }];
+    });
   } catch {
     return [];
   }
@@ -65,15 +73,14 @@ export function ProfitSimulator({ rows, liquid, selic }: { rows: MarketRow[]; li
   const lines = items.flatMap((item) => {
     const row = byTicker.get(item.ticker);
     if (!row) return [];
-    const estimate = item.estimateMi === null ? null : item.estimateMi * 1e6;
-    return [{ item, row, sim: simulateProfit(row, estimate) }];
+    return [{ item, row, sim: simulateProfit(row, item.estimate) }];
   });
 
   const add = (ticker: string) => {
     if (!byTicker.has(ticker) || items.some((i) => i.ticker === ticker) || items.length >= MAX_COMPANIES) return;
-    write([...items, { ticker, estimateMi: null }]);
+    write([...items, { ticker, estimate: null }]);
   };
-  const setEstimate = (ticker: string, estimateMi: number | null) => write(items.map((i) => (i.ticker === ticker ? { ...i, estimateMi } : i)));
+  const setEstimate = (ticker: string, estimate: number | null) => write(items.map((i) => (i.ticker === ticker ? { ...i, estimate } : i)));
   const remove = (ticker: string) => write(items.filter((i) => i.ticker !== ticker));
 
   const onQuery = (value: string) => {
@@ -85,7 +92,7 @@ export function ProfitSimulator({ rows, liquid, selic }: { rows: MarketRow[]; li
   };
 
   const simulated = lines
-    .filter((l) => l.item.estimateMi !== null)
+    .filter((l) => l.item.estimate !== null)
     .map((l) => ({ ticker: l.row.ticker, pl: l.row.pl, roe: l.row.roe, plForward: l.sim.plForward, roeForward: l.sim.roeForward }));
 
   return (
@@ -139,28 +146,13 @@ export function ProfitSimulator({ rows, liquid, selic }: { rows: MarketRow[]; li
                   <td className="num px-3 py-2 text-right">{formatCompactCurrency(row.netIncome, 1)}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="flex items-center rounded-md border bg-background focus-within:ring-3 focus-within:ring-ring/30">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step={100}
-                          value={item.estimateMi ?? ""}
-                          placeholder={row.netIncome !== null ? String(Math.round(row.netIncome / 1e6)) : ""}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            setEstimate(row.ticker, e.target.value === "" || !Number.isFinite(n) ? null : n);
-                          }}
-                          aria-label={`Lucro estimado de ${row.ticker} em R$ milhões`}
-                          className="num w-24 bg-transparent px-2 py-1 text-sm outline-none"
-                        />
-                        <span className="pr-2 text-xs text-muted-foreground">mi</span>
-                      </span>
+                      <MoneyInput value={item.estimate} reference={row.netIncome} onChange={(v) => setEstimate(row.ticker, v)} ariaLabel={`Lucro estimado de ${row.ticker}`} className="w-32" />
                       {row.netIncome !== null && row.netIncome > 0 &&
                         SCENARIOS.map((s) => (
                           <button
                             key={s}
                             type="button"
-                            onClick={() => setEstimate(row.ticker, Math.round((row.netIncome! * (1 + s)) / 1e6))}
+                            onClick={() => setEstimate(row.ticker, row.netIncome! * (1 + s))}
                             aria-label={`Estimar lucro de ${row.ticker} ${s > 0 ? "maior" : "menor"} em ${Math.abs(s * 100)}%`}
                             className="num rounded border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
                           >
