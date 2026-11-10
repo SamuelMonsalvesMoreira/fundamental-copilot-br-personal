@@ -330,7 +330,8 @@ export function topCompanies(limit = 12) {
   return sqlite
     .prepare(
       `SELECT s.ticker, s.name, s.sector, s.price, s.market_cap AS marketCap, s.pl, s.roe, s.dy,
-              (SELECT change_pct FROM quotes_daily q WHERE q.ticker = s.ticker ORDER BY date DESC LIMIT 1) AS changePct
+              (SELECT COALESCE(q.change_pct, q.close / (SELECT p.close FROM quotes_daily p WHERE p.ticker = q.ticker AND p.date < q.date ORDER BY p.date DESC LIMIT 1) - 1)
+                 FROM quotes_daily q WHERE q.ticker = s.ticker ORDER BY date DESC LIMIT 1) AS changePct
          FROM company_snapshots s WHERE s.market_cap IS NOT NULL ORDER BY s.market_cap DESC LIMIT ?`,
     )
     .all(limit) as Array<{ ticker: string; name: string; sector: string; price: number | null; marketCap: number; pl: number | null; roe: number | null; dy: number | null; changePct: number | null }>;

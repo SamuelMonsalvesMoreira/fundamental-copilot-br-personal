@@ -7,34 +7,106 @@ import { TickerSearch } from "@/components/search/ticker-search";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCompactCurrency, formatCurrency, formatDate, formatMultiple, formatPercent, formatSignedPercent, trendOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { HeroSimulator } from "@/components/home/hero-simulator";
 import { topCompanies } from "@/server/company";
+import { getPanorama } from "@/server/panorama";
 import { getMarketSummary } from "@/server/data-status";
 import { getMacroSnapshot } from "@/server/macro";
 
-const SUGGESTIONS = ["PETR4", "ITUB4", "WEGE3", "VALE3", "BBAS3", "TAEE11"];
+const HERO_TICKERS = ["WEGE3", "ITUB4", "PETR4", "VALE3", "TAEE11"];
+const REPO_URL = "https://github.com/SamuelMonsalvesMoreira/fundamental-copilot-br-personal";
 
 export default function Home() {
   return (
-    <div className="grid gap-10">
-      <section className="mx-auto grid w-full max-w-2xl gap-4 pt-6 text-center sm:pt-10">
-        <p className="text-sm font-medium text-primary">Análise fundamentalista · B3</p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Ações brasileiras pelos números publicados.</h1>
-        <p className="text-muted-foreground">
-          Demonstrações oficiais da CVM, macro do Banco Central e cotações do último pregão, com a fonte e a data de cada número.
-        </p>
-        <TickerSearch size="lg" className="mt-2 text-left" />
-        <div className="flex flex-wrap justify-center gap-1.5">
-          {SUGGESTIONS.map((t) => (
-            <Link key={t} href={`/empresa/${t}`} className="num rounded-md border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-              {t}
-            </Link>
-          ))}
-        </div>
-      </section>
+    <div className="grid gap-14">
+      <div className="grid gap-8 pt-4 sm:pt-8">
+        <h1 className="text-sm font-medium text-primary">Análise fundamentalista de ações da B3, com dados oficiais e cenários de lucro</h1>
+        <Suspense fallback={<Skeleton className="h-40 max-w-4xl" />}>
+          <Hero />
+        </Suspense>
+        <TickerSearch size="lg" className="max-w-2xl" />
+      </div>
+
+      <Suspense fallback={<Skeleton className="h-48" />}>
+        <StartHere />
+      </Suspense>
 
       <Suspense fallback={<HomeSkeleton />}>
         <MarketOverview />
       </Suspense>
+    </div>
+  );
+}
+
+async function Hero() {
+  await connection();
+  const { rows, overview } = getPanorama();
+  const options = HERO_TICKERS.map((t) => rows.find((r) => r.ticker === t)).filter(
+    (r): r is NonNullable<typeof r> => r !== undefined && r.netIncome !== null && r.netIncome > 0 && r.pl !== null,
+  );
+  return <HeroSimulator options={options} dataDate={overview.priceDate} />;
+}
+
+async function StartHere() {
+  await connection();
+  const { overview: o, selic } = getPanorama();
+  const places = [
+    {
+      href: "/panorama",
+      title: "Panorama do mercado",
+      text:
+        selic !== null && o.aboveSelic !== null
+          ? `${o.aboveSelic} das ${o.liquid.length} empresas líquidas têm ROE acima da Selic de ${formatPercent(selic, 2)}.`
+          : "Medianas do mercado, setores e o gráfico de preço por rentabilidade.",
+    },
+    { href: "/empresa/WEGE3", title: "Página de uma empresa", text: "Indicadores com fórmula e fonte, 10 anos de gráficos, valuation, pares de porte parecido e relatório em PDF." },
+    { href: "/screener", title: "Screener", text: `Filtre as ${o.all} empresas com cotação por P/L, ROE, dividendos e dívida.` },
+    { href: "/comparar", title: "Comparador", text: "Duas a quatro empresas lado a lado, com os mesmos indicadores." },
+  ];
+  const steps = [
+    { title: "Coleta", text: "Balanços da CVM, juros e inflação do Banco Central, preços e proventos da brapi.dev e do Yahoo Finance." },
+    { title: "Cálculo", text: "Indicadores com fórmula, período e fonte. Dado ausente aparece como ausente, nunca como zero." },
+    {
+      title: "Publicação",
+      text: `Todo dia útil, depois do fechamento, um robô atualiza e republica o site. Preços de ${formatDate(o.priceDate)}, balanços até ${formatDate(o.financialsEnd)}.`,
+    },
+  ];
+
+  return (
+    <div className="grid gap-12 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16">
+      <section aria-labelledby="start-title" className="grid content-start gap-3">
+        <h2 id="start-title" className="text-lg font-semibold">Por onde começar</h2>
+        <ul className="divide-y border-y">
+          {places.map((p) => (
+            <li key={p.href}>
+              <Link href={p.href} className="group grid gap-0.5 py-3.5 transition-colors hover:bg-muted/40 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4 sm:px-2">
+                <span className="font-medium group-hover:text-primary">{p.title}</span>
+                <span className="text-sm text-muted-foreground">{p.text}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="how-title" className="grid content-start gap-3">
+        <h2 id="how-title" className="text-lg font-semibold">De onde vêm os números</h2>
+        <ol className="grid gap-4">
+          {steps.map((s, i) => (
+            <li key={s.title} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3">
+              <span aria-hidden className="num flex size-7 items-center justify-center rounded-full border text-xs text-muted-foreground">{i + 1}</span>
+              <div>
+                <p className="font-medium">{s.title}</p>
+                <p className="text-sm text-muted-foreground">{s.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <p className="text-sm text-muted-foreground">
+          Projeto pessoal de estudo, com código aberto no{" "}
+          <a href={REPO_URL} target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">GitHub</a>.
+          Nada aqui é recomendação de investimento.
+        </p>
+      </section>
     </div>
   );
 }
@@ -63,7 +135,7 @@ async function MarketOverview() {
       <MacroStrip values={macro} />
       <section aria-labelledby="top-title" className="grid grid-cols-1 gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="top-title" className="text-lg font-semibold">Maiores empresas da bolsa</h2>
+          <h2 id="top-title" className="text-lg font-semibold">Maiores empresas da bolsa hoje</h2>
           <p className="text-xs text-muted-foreground">
             Cotações de {formatDate(market.latestQuoteDate)} (brapi.dev) · indicadores com dados da CVM
           </p>
